@@ -1,0 +1,1181 @@
+{
+  "info": {
+    "name": "Salon Backend API Collection",
+    "description": "Complete API collection for Salon Management System with Admin Registration Updates",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication Flow",
+      "item": [
+        {
+          "name": "Admin Login (Email/Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@salon.com\",\n  \"password\": \"Admin123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/login",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login"]
+            }
+          }
+        },
+        {
+          "name": "Manager Login (Face Recognition)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "faceImage",
+                  "type": "file",
+                  "src": "",
+                  "description": "Manager's face image for recognition"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/manager/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "manager", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍💼 Admin Management (Updated)",
+      "item": [
+        {
+          "name": "Add Admin - Complete Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Admin User",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "admin@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Admin123!",
+                  "type": "text"
+                },
+                {
+                  "key": "confirmPassword",
+                  "value": "Admin123!",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234567",
+                  "type": "text"
+                },
+                {
+                  "key": "livePicture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin - Test Missing Email (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Admin No Email",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "admin456",
+                  "type": "text"
+                },
+                {
+                  "key": "confirmPassword",
+                  "value": "admin456",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234568",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin - Test Missing Password (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Admin No Password",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "adminnopass@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234569",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin - Test Weak Password (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Weak Password Test",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "weakpass@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "weak123",
+                  "type": "text"
+                },
+                {
+                  "key": "confirmPassword",
+                  "value": "weak123",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234572",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin - Test Short Password (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Short Password Test",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "shortpass@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Ab1!",
+                  "type": "text"
+                },
+                {
+                  "key": "confirmPassword",
+                  "value": "Ab1!",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234573",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Admins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/all",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "all"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin - Test Password Mismatch (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Password Mismatch Test",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "mismatch@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "StrongPass123!",
+                  "type": "text"
+                },
+                {
+                  "key": "confirmPassword",
+                  "value": "DifferentPass456@",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234574",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Add Admin - Test Duplicate Email (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Duplicate Email Test",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "admin@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "AnotherPass123!",
+                  "type": "text"
+                },
+                {
+                  "key": "confirmPassword",
+                  "value": "AnotherPass123!",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234575",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/add",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "add"]
+            }
+          }
+        },
+        {
+          "name": "Admin Attendance Check-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "adminId",
+                  "value": "ADMIN_ID_HERE",
+                  "type": "text"
+                },
+                {
+                  "key": "attendanceType",
+                  "value": "checkin",
+                  "type": "text"
+                },
+                {
+                  "key": "livePicture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/attendance",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "attendance"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍💼 Manager Authentication",
+      "item": [
+        {
+          "name": "Manager Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@salon.com\",\n  \"password\": \"manager123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/manager/login",
+              "host": ["{{base_url}}"],
+              "path": ["manager", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👥 Employee Management",
+      "item": [
+        {
+          "name": "Add Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Employee Name",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "employee@salon.com",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "03001234567",
+                  "type": "text"
+                },
+                {
+                  "key": "position",
+                  "value": "Hair Stylist",
+                  "type": "text"
+                },
+                {
+                  "key": "salary",
+                  "value": "50000",
+                  "type": "text"
+                },
+                {
+                  "key": "livePicture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/employee/add",
+              "host": ["{{base_url}}"],
+              "path": ["employee", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/employee/all",
+              "host": ["{{base_url}}"],
+              "path": ["employee", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Attendance Management",
+      "item": [
+        {
+          "name": "Employee Check-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "employeeId",
+                  "value": "EMPLOYEE_ID_HERE",
+                  "type": "text"
+                },
+                {
+                  "key": "attendanceType",
+                  "value": "checkin",
+                  "type": "text"
+                },
+                {
+                  "key": "attendanceImage",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/attendance/checkin-checkout",
+              "host": ["{{base_url}}"],
+              "path": ["attendance", "checkin-checkout"]
+            }
+          }
+        },
+        {
+          "name": "Get All Attendance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/attendance/all",
+              "host": ["{{base_url}}"],
+              "path": ["attendance", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Client Management",
+      "item": [
+        {
+          "name": "Add Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Client Name",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "03001234567",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "client@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "Client Address",
+                  "type": "text"
+                },
+                {
+                  "key": "livePicture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/client/add",
+              "host": ["{{base_url}}"],
+              "path": ["client", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Clients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/client/all",
+              "host": ["{{base_url}}"],
+              "path": ["client", "all"]
+            }
+          }
+        },
+        {
+          "name": "Search Client",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/client/search?query=client_name",
+              "host": ["{{base_url}}"],
+              "path": ["client", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "client_name"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛍️ Services Management",
+      "item": [
+        {
+          "name": "Add Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Hair Cut",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "1500",
+                  "type": "text"
+                },
+                {
+                  "key": "duration",
+                  "value": "30",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Professional hair cutting service",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "Hair",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/service/add",
+              "host": ["{{base_url}}"],
+              "path": ["service", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/service/all",
+              "host": ["{{base_url}}"],
+              "path": ["service", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Products Management",
+      "item": [
+        {
+          "name": "Add Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Hair Shampoo",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "500",
+                  "type": "text"
+                },
+                {
+                  "key": "quantity",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Premium hair shampoo",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "Hair Care",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/product/add",
+              "host": ["{{base_url}}"],
+              "path": ["product", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/product/all",
+              "host": ["{{base_url}}"],
+              "path": ["product", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧾 Billing Management",
+      "item": [
+        {
+          "name": "Create Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"CLIENT_ID_HERE\",\n  \"clientName\": \"John Doe\",\n  \"clientPhone\": \"03001234567\",\n  \"services\": [\n    {\n      \"name\": \"Hair Cut\",\n      \"price\": 1500\n    },\n    {\n      \"name\": \"Hair Wash\",\n      \"price\": 500\n    }\n  ],\n  \"totalAmount\": 2000,\n  \"discount\": 200,\n  \"finalAmount\": 1800,\n  \"paymentMethod\": \"cash\",\n  \"paymentStatus\": \"paid\",\n  \"notes\": \"Regular client\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/bill/create",
+              "host": ["{{base_url}}"],
+              "path": ["bill", "create"]
+            }
+          }
+        },
+        {
+          "name": "Get All Bills",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/bill/all",
+              "host": ["{{base_url}}"],
+              "path": ["bill", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Expense Management",
+      "item": [
+        {
+          "name": "Add Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Office Supplies\",\n  \"amount\": 5000,\n  \"category\": \"Office\",\n  \"description\": \"Monthly office supplies purchase\",\n  \"status\": \"pending\",\n  \"remarks\": \"Need approval from manager\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expense/add",
+              "host": ["{{base_url}}"],
+              "path": ["expense", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Expenses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/expense/all",
+              "host": ["{{base_url}}"],
+              "path": ["expense", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💸 Advance Salary Management",
+      "item": [
+        {
+          "name": "Request Advance Salary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "employeeId",
+                  "value": "EMPLOYEE_ID_HERE",
+                  "type": "text"
+                },
+                {
+                  "key": "amount",
+                  "value": "10000",
+                  "type": "text"
+                },
+                {
+                  "key": "reason",
+                  "value": "Medical emergency",
+                  "type": "text"
+                },
+                {
+                  "key": "livePicture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/advance-salary/add",
+              "host": ["{{base_url}}"],
+              "path": ["advance-salary", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Advance Salary Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/advance-salary/all",
+              "host": ["{{base_url}}"],
+              "path": ["advance-salary", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Advance Booking Management",
+      "item": [
+        {
+          "name": "Create Advance Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"CLIENT_ID_HERE\",\n  \"clientName\": \"John Doe\",\n  \"clientPhone\": \"03001234567\",\n  \"services\": [\"Hair Cut\", \"Hair Wash\"],\n  \"bookingDate\": \"2024-12-25\",\n  \"bookingTime\": \"14:00\",\n  \"totalAmount\": 2000,\n  \"advanceAmount\": 500,\n  \"notes\": \"Special occasion booking\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/advance-booking/add",
+              "host": ["{{base_url}}"],
+              "path": ["advance-booking", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Advance Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/advance-booking/all",
+              "host": ["{{base_url}}"],
+              "path": ["advance-booking", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤝 Deals Management",
+      "item": [
+        {
+          "name": "Add Deal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Winter Special",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "50% off on all services",
+                  "type": "text"
+                },
+                {
+                  "key": "discount",
+                  "value": "50",
+                  "type": "text"
+                },
+                {
+                  "key": "validFrom",
+                  "value": "2024-12-01",
+                  "type": "text"
+                },
+                {
+                  "key": "validTo",
+                  "value": "2024-12-31",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/deal/add",
+              "host": ["{{base_url}}"],
+              "path": ["deal", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Deals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/deal/all",
+              "host": ["{{base_url}}"],
+              "path": ["deal", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "✅ Unified Approval System",
+      "item": [
+        {
+          "name": "Get All Pending Approvals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/approval/pending",
+              "host": ["{{base_url}}"],
+              "path": ["approval", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Approve Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"REQUEST_ID_HERE\",\n  \"requestType\": \"expense\",\n  \"action\": \"approve\",\n  \"remarks\": \"Approved by manager\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/approval/action",
+              "host": ["{{base_url}}"],
+              "path": ["approval", "action"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 Health Check",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Root Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
