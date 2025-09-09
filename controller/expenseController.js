@@ -4,6 +4,8 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const Expense = require("../models/Expense");
+const Notification = require("../models/Notification");
+const Admin = require("../models/Admin");
 
 // Cloudinary configuration
 cloudinary.config({
@@ -86,6 +88,33 @@ exports.addExpense = async (req, res) => {
       status: req.body.userRole === "admin" ? "approved" : "pending", // Admin expenses are auto-approved, manager expenses need approval
     });
     await expense.save();
+
+    // Create notification for admin if it's a manager expense
+    if (req.body.userRole === "manager") {
+      try {
+        const admins = await Admin.find({ isActive: { $ne: false } });
+        for (const admin of admins) {
+          const notification = new Notification({
+            title: "Expense Request",
+            message: `New expense request submitted: ${req.body.description} - Amount: $${req.body.amount}`,
+            type: "expense_request",
+            recipientType: "admin",
+            recipientId: admin._id,
+            recipientModel: "Admin",
+            relatedEntityType: "expense",
+            relatedEntityId: expense._id,
+            priority: "medium",
+          });
+          await notification.save();
+        }
+      } catch (notificationError) {
+        console.error(
+          "Error creating expense notification:",
+          notificationError
+        );
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: "Expense submitted successfully",
@@ -147,9 +176,9 @@ exports.getPendingExpenses = async (req, res) => {
 // Get Manager's Own Pending Expenses
 exports.getManagerPendingExpenses = async (req, res) => {
   try {
-    const managerPendingExpenses = await Expense.find({ 
+    const managerPendingExpenses = await Expense.find({
       status: "pending",
-      userRole: "manager"
+      userRole: "manager",
     });
     res.status(200).json({
       success: true,

@@ -1,5 +1,8 @@
 require("dotenv").config();
 const AdvanceBooking = require("../models/AdvanceBooking");
+const Notification = require("../models/Notification");
+const Admin = require("../models/Admin");
+const Manager = require("../models/Manager");
 const cloudinary = require("cloudinary").v2;
 
 // Configure Cloudinary
@@ -15,6 +18,58 @@ const handleFileUpload = (req, res, next) => {
   console.log("🔍 Request body:", req.body);
   console.log("🔍 Request files:", req.files);
   next();
+};
+
+// Create advance booking reminder notification
+const createAdvanceBookingReminder = async (booking) => {
+  try {
+    const bookingDate = new Date(booking.date);
+    const reminderDate = new Date(bookingDate.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+
+    // Get all admins and managers
+    const admins = await Admin.find({ isActive: { $ne: false } });
+    const managers = await Manager.find({ isActive: { $ne: false } });
+
+    // Create notifications for admins
+    for (const admin of admins) {
+      const notification = new Notification({
+        title: "Advance Booking Reminder",
+        message: `Reminder: Call client ${booking.clientName} (${booking.phoneNumber}) for tomorrow's booking at ${booking.time}`,
+        type: "advance_booking_reminder",
+        recipientType: "admin",
+        recipientId: admin._id,
+        recipientModel: "Admin",
+        relatedEntityType: "advance_booking",
+        relatedEntityId: booking._id,
+        scheduledFor: reminderDate,
+        priority: "high",
+      });
+      await notification.save();
+    }
+
+    // Create notifications for managers
+    for (const manager of managers) {
+      const notification = new Notification({
+        title: "Advance Booking Reminder",
+        message: `Reminder: Call client ${booking.clientName} (${booking.phoneNumber}) for tomorrow's booking at ${booking.time}`,
+        type: "advance_booking_reminder",
+        recipientType: "manager",
+        recipientId: manager._id,
+        recipientModel: "Manager",
+        relatedEntityType: "advance_booking",
+        relatedEntityId: booking._id,
+        scheduledFor: reminderDate,
+        priority: "high",
+      });
+      await notification.save();
+    }
+
+    console.log(
+      `✅ Created advance booking reminder notifications for booking ${booking._id}`
+    );
+  } catch (error) {
+    console.error("❌ Error creating advance booking reminder:", error);
+  }
 };
 
 // Add Advance Booking
@@ -138,6 +193,9 @@ const addAdvanceBooking = async (req, res) => {
     });
 
     await booking.save();
+
+    // Create advance booking reminder notification
+    await createAdvanceBookingReminder(booking);
 
     res.status(201).json({
       success: true,

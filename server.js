@@ -76,6 +76,8 @@ const managerAuthRoutes = require("./routes/managerAuthRoutes");
 const clientRoutes = require("./routes/clientRoutes");
 const adminClientRoutes = require("./routes/adminClientRoutes");
 const billRoutes = require("./routes/billRoutes");
+const gstRoutes = require("./routes/gstRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const compareFacesRoute = require("./api/compareFaces");
 
 // Use Routes
@@ -95,6 +97,8 @@ app.use("/api/manager", managerAuthRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/admin-clients", adminClientRoutes);
 app.use("/api/bills", billRoutes);
+app.use("/api/gst", gstRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/employees", compareFacesRoute);
 
 // Health check endpoint
@@ -120,6 +124,8 @@ app.use("*", (req, res) => {
       "/api/products/*",
       "/api/clients/*",
       "/api/bills/*",
+      "/api/gst/*",
+      "/api/notifications/*",
       "/health",
     ],
   });

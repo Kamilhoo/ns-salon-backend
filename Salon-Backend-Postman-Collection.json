@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Salon Backend API Collection",
-    "description": "Complete API collection for Salon Management System with Admin Registration Updates",
+    "description": "Complete API collection for Salon Management System with GST Configuration and Notifications",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1146,6 +1146,318 @@
               "raw": "{{base_url}}/approval/action",
               "host": ["{{base_url}}"],
               "path": ["approval", "action"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧾 GST Configuration",
+      "item": [
+        {
+          "name": "Get GST Configuration (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/gst/admin/config",
+              "host": ["{{base_url}}"],
+              "path": ["api", "gst", "admin", "config"]
+            }
+          }
+        },
+        {
+          "name": "Update GST Configuration (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gstPercentage\": 7,\n  \"isActive\": true,\n  \"appliedTo\": \"all\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/gst/admin/config",
+              "host": ["{{base_url}}"],
+              "path": ["api", "gst", "admin", "config"]
+            }
+          }
+        },
+        {
+          "name": "Get GST for Billing (Manager)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/gst/billing",
+              "host": ["{{base_url}}"],
+              "path": ["api", "gst", "billing"]
+            }
+          }
+        },
+        {
+          "name": "Calculate GST Amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/gst/calculate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "gst", "calculate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notification System",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Notification Count (Navbar Badge)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/count",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "count"]
+            }
+          }
+        },
+        {
+          "name": "Get Upcoming Reminders (Alarm Icon)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/reminders",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "reminders"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/NOTIFICATION_ID/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "NOTIFICATION_ID", "read"]
+            }
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/mark-all-read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "mark-all-read"]
+            }
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/NOTIFICATION_ID",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "NOTIFICATION_ID"]
+            }
+          }
+        },
+        {
+          "name": "Create Notification (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"System Maintenance\",\n  \"message\": \"System will be under maintenance from 2 AM to 4 AM\",\n  \"type\": \"system_alert\",\n  \"recipientType\": \"both\",\n  \"priority\": \"high\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/notifications/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "create"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧾 Enhanced Billing System",
+      "item": [
+        {
+          "name": "Create Bill from Services (Home Screen)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"John Doe\",\n  \"clientPhone\": \"+1234567890\",\n  \"selectedServices\": [\n    {\n      \"name\": \"Haircut\",\n      \"price\": 50,\n      \"duration\": \"1 hour\",\n      \"description\": \"Professional haircut\"\n    },\n    {\n      \"name\": \"Manicure\",\n      \"price\": 30,\n      \"duration\": \"45 minutes\",\n      \"description\": \"Nail care service\"\n    }\n  ],\n  \"discount\": 10,\n  \"paymentMethod\": \"cash\",\n  \"notes\": \"Regular customer\",\n  \"appointmentDate\": \"2024-03-10\",\n  \"startTime\": \"10:00 AM\",\n  \"specialist\": \"Bella\",\n  \"totalDuration\": \"2 hours\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bills/create-from-services",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bills", "create-from-services"]
+            }
+          }
+        },
+        {
+          "name": "Generate Printable Bill",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bills/BILL_ID/print",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bills", "BILL_ID", "print"]
+            }
+          }
+        },
+        {
+          "name": "Get Bill by ID (with GST)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bills/BILL_ID",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bills", "BILL_ID"]
+            }
+          }
+        },
+        {
+          "name": "Get Manager Billing Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/bills/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bills", "stats"]
             }
           }
         }

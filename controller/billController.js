@@ -1,6 +1,7 @@
 require("dotenv").config();
 const Bill = require("../models/Bill");
 const Client = require("../models/Client");
+const GSTConfig = require("../models/GSTConfig");
 
 // Create new bill
 exports.createBill = async (req, res) => {
@@ -10,25 +11,23 @@ exports.createBill = async (req, res) => {
       clientName,
       clientPhone,
       services,
-      totalAmount,
+      appointmentDate,
+      startTime,
+      specialist,
+      totalDuration,
+      subtotal,
       discount = 0,
-      paymentMethod,
+      paymentMethod = "cash",
       paymentStatus = "pending",
       notes,
     } = req.body;
 
     // Validate required fields
-    if (
-      !clientId ||
-      !clientName ||
-      !services ||
-      !totalAmount ||
-      !paymentMethod
-    ) {
+    if (!clientId || !clientName || !services || !subtotal || !paymentMethod) {
       return res.status(400).json({
         success: false,
         message:
-          "Required fields: clientId, clientName, services, totalAmount, paymentMethod",
+          "Required fields: clientId, clientName, services, subtotal, paymentMethod",
       });
     }
 
@@ -59,18 +58,34 @@ exports.createBill = async (req, res) => {
       });
     }
 
-    // Calculate final amount
-    const finalAmount = totalAmount - discount;
+    // Get GST configuration
+    const gstConfig = await GSTConfig.findOne();
+    const gstPercentage =
+      gstConfig && gstConfig.isActive ? gstConfig.gstPercentage : 0;
 
-    // Create bill
+    // Calculate amounts
+    const amountBeforeGST = subtotal - discount;
+    const gstAmount = (amountBeforeGST * gstPercentage) / 100;
+    const totalAmount = subtotal;
+    const finalAmount = amountBeforeGST + gstAmount;
+
+    // Create bill with new schema
     const bill = new Bill({
       clientId,
       clientName,
       clientPhone: clientPhone || client.phoneNumber,
       services,
-      totalAmount,
+      appointmentDate: appointmentDate ? new Date(appointmentDate) : new Date(),
+      startTime,
+      specialist,
+      totalDuration,
+      subtotal,
       discount,
-      finalAmount,
+      amountBeforeGST,
+      gstPercentage,
+      gstAmount: parseFloat(gstAmount.toFixed(2)),
+      totalAmount,
+      finalAmount: parseFloat(finalAmount.toFixed(2)),
       paymentMethod,
       paymentStatus,
       notes,
@@ -91,7 +106,7 @@ exports.createBill = async (req, res) => {
           date: new Date(),
           services: services,
           totalAmount: finalAmount,
-          billNumber: bill._id.toString(),
+          billNumber: bill.billNumber,
           paymentStatus: paymentStatus,
         };
 
@@ -111,7 +126,25 @@ exports.createBill = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Bill created successfully",
-      bill,
+      bill: {
+        _id: bill._id,
+        billNumber: bill.billNumber,
+        clientName: bill.clientName,
+        clientPhone: bill.clientPhone,
+        services: bill.services,
+        appointmentDate: bill.appointmentDate,
+        startTime: bill.startTime,
+        specialist: bill.specialist,
+        totalDuration: bill.totalDuration,
+        subtotal: bill.subtotal,
+        discount: bill.discount,
+        totalAmount: bill.totalAmount,
+        finalAmount: bill.finalAmount,
+        paymentMethod: bill.paymentMethod,
+        paymentStatus: bill.paymentStatus,
+        notes: bill.notes,
+        createdAt: bill.createdAt,
+      },
     });
   } catch (error) {
     console.error("Error creating bill:", error);
@@ -495,6 +528,207 @@ exports.getManagerBillingStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error getting billing statistics",
+      error: error.message,
+    });
+  }
+};
+
+// Generate printable bill (for print functionality)
+exports.generatePrintableBill = async (req, res) => {
+  try {
+    const { billId } = req.params;
+
+    const bill = await Bill.findById(billId).populate(
+      "clientId",
+      "name phoneNumber"
+    );
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: "Bill not found",
+      });
+    }
+
+    // Format bill for printing
+    const printableBill = {
+      billNumber: bill.billNumber,
+      date: bill.appointmentDate,
+      startTime: bill.startTime,
+      specialist: bill.specialist,
+      duration: bill.totalDuration,
+      clientName: bill.clientName,
+      clientPhone: bill.clientPhone,
+      services: bill.services,
+      subtotal: bill.subtotal,
+      discount: bill.discount,
+      amountBeforeGST: bill.amountBeforeGST,
+      gstPercentage: bill.gstPercentage,
+      gstAmount: bill.gstAmount,
+      total: bill.finalAmount,
+      paymentMethod: bill.paymentMethod,
+      paymentStatus: bill.paymentStatus,
+      notes: bill.notes,
+      createdAt: bill.createdAt,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Printable bill generated successfully",
+      bill: printableBill,
+    });
+  } catch (error) {
+    console.error("Error generating printable bill:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating printable bill",
+      error: error.message,
+    });
+  }
+};
+
+// Create bill from service selection (for home screen flow)
+exports.createBillFromServices = async (req, res) => {
+  try {
+    const {
+      clientName,
+      clientPhone,
+      selectedServices,
+      discount = 0,
+      paymentMethod = "cash",
+      notes,
+      appointmentDate,
+      startTime,
+      specialist,
+      totalDuration,
+    } = req.body;
+
+    // Validate required fields
+    if (
+      !clientName ||
+      !selectedServices ||
+      !Array.isArray(selectedServices) ||
+      selectedServices.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Client name and selected services are required",
+      });
+    }
+
+    // Get GST configuration
+    const gstConfig = await GSTConfig.findOne();
+    const gstPercentage =
+      gstConfig && gstConfig.isActive ? gstConfig.gstPercentage : 0;
+
+    // Calculate subtotal from selected services
+    const subtotal = selectedServices.reduce(
+      (total, service) => total + (service.price || 0),
+      0
+    );
+    const amountBeforeGST = subtotal - discount;
+    const gstAmount = (amountBeforeGST * gstPercentage) / 100;
+    const finalAmount = amountBeforeGST + gstAmount;
+
+    // Check if client exists, if not create a new one
+    let client = await Client.findOne({ phoneNumber: clientPhone });
+    if (!client) {
+      // Generate client ID
+      const lastClient = await Client.findOne().sort({ clientId: -1 });
+      const clientNumber = lastClient
+        ? parseInt(lastClient.clientId.replace("CLT", "")) + 1
+        : 1;
+      const clientId = `CLT${clientNumber.toString().padStart(3, "0")}`;
+
+      client = new Client({
+        clientId,
+        name: clientName,
+        phoneNumber: clientPhone,
+        totalVisits: 0,
+        totalSpent: 0,
+        visits: [],
+      });
+      await client.save();
+    }
+
+    // Create bill
+    const bill = new Bill({
+      clientId: client._id,
+      clientName,
+      clientPhone,
+      services: selectedServices,
+      appointmentDate: appointmentDate ? new Date(appointmentDate) : new Date(),
+      startTime,
+      specialist,
+      totalDuration,
+      subtotal,
+      discount,
+      amountBeforeGST,
+      gstPercentage,
+      gstAmount: parseFloat(gstAmount.toFixed(2)),
+      totalAmount: subtotal,
+      finalAmount: parseFloat(finalAmount.toFixed(2)),
+      paymentMethod,
+      paymentStatus: "pending",
+      notes,
+    });
+
+    await bill.save();
+
+    // Update client visit history
+    try {
+      const visitId = `VISIT${Date.now()}`;
+      const newVisit = {
+        visitId,
+        date: new Date(),
+        services: selectedServices,
+        totalAmount: finalAmount,
+        billNumber: bill.billNumber,
+        paymentStatus: "pending",
+      };
+
+      client.visits.push(newVisit);
+      client.totalVisits += 1;
+      client.totalSpent += finalAmount;
+      client.lastVisit = new Date();
+      await client.save();
+    } catch (visitError) {
+      console.error("Error updating client visit:", visitError);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Bill created successfully from service selection",
+      bill: {
+        _id: bill._id,
+        billNumber: bill.billNumber,
+        clientName: bill.clientName,
+        clientPhone: bill.clientPhone,
+        services: bill.services,
+        appointmentDate: bill.appointmentDate,
+        startTime: bill.startTime,
+        specialist: bill.specialist,
+        totalDuration: bill.totalDuration,
+        subtotal: bill.subtotal,
+        discount: bill.discount,
+        totalAmount: bill.totalAmount,
+        finalAmount: bill.finalAmount,
+        paymentMethod: bill.paymentMethod,
+        paymentStatus: bill.paymentStatus,
+        notes: bill.notes,
+        createdAt: bill.createdAt,
+      },
+      client: {
+        _id: client._id,
+        clientId: client.clientId,
+        name: client.name,
+        phoneNumber: client.phoneNumber,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating bill from services:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating bill from services",
       error: error.message,
     });
   }

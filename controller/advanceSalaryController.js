@@ -6,6 +6,7 @@ const path = require("path");
 const AdvanceSalary = require("../models/AdvanceSalary");
 const Employee = require("../models/Employee");
 const Admin = require("../models/Admin"); // Added Admin model import
+const Notification = require("../models/Notification");
 
 // Cloudinary configuration
 cloudinary.config({
@@ -272,6 +273,30 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
     });
 
     await advanceSalary.save();
+
+    // Create notification for admin
+    try {
+      const admins = await Admin.find({ isActive: { $ne: false } });
+      for (const admin of admins) {
+        const notification = new Notification({
+          title: "Advance Salary Request",
+          message: `New advance salary request from ${req.body.employeeName} (${req.body.employeeId}) - Amount: $${req.body.amount}`,
+          type: "advance_salary_request",
+          recipientType: "admin",
+          recipientId: admin._id,
+          recipientModel: "Admin",
+          relatedEntityType: "advance_salary",
+          relatedEntityId: advanceSalary._id,
+          priority: "high",
+        });
+        await notification.save();
+      }
+    } catch (notificationError) {
+      console.error(
+        "Error creating advance salary notification:",
+        notificationError
+      );
+    }
 
     res.status(201).json({
       message: "Advance salary request submitted successfully",

@@ -7,6 +7,8 @@ const os = require("os");
 const Employee = require("../models/Employee");
 const Attendance = require("../models/Attendance");
 const ManualAttendanceRequest = require("../models/ManualAttendanceRequest");
+const Notification = require("../models/Notification");
+const Admin = require("../models/Admin");
 
 // Use os.tmpdir() for temporary files (better for serverless)
 const uploadsDir = os.tmpdir();
@@ -521,6 +523,30 @@ exports.manualAttendanceRequest = async (req, res) => {
     });
 
     await manualRequest.save();
+
+    // Create notification for admin
+    try {
+      const admins = await Admin.find({ isActive: { $ne: false } });
+      for (const admin of admins) {
+        const notification = new Notification({
+          title: "Manual Attendance Request",
+          message: `${employeeName} (${employeeId}) has submitted a manual ${requestType} request for ${requestedTime}`,
+          type: "attendance_request",
+          recipientType: "admin",
+          recipientId: admin._id,
+          recipientModel: "Admin",
+          relatedEntityType: "attendance",
+          relatedEntityId: manualRequest._id,
+          priority: "medium",
+        });
+        await notification.save();
+      }
+    } catch (notificationError) {
+      console.error(
+        "Error creating attendance notification:",
+        notificationError
+      );
+    }
 
     res.status(201).json({
       message: "Manual attendance request submitted successfully",
