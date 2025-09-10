@@ -204,6 +204,28 @@ exports.addEmployee = async (req, res) => {
 
     await employee.save();
 
+    // Notify all admins about new employee addition
+    try {
+      const Admin = require("../models/Admin");
+      const Notification = require("../models/Notification");
+      const admins = await Admin.find({});
+      for (const admin of admins) {
+        const notification = new Notification({
+          title: "New Employee Added",
+          message: `Employee ${name} (ID: ${employeeId}) has been added to the system.`,
+          type: "general",
+          recipientType: "admin",
+          recipientId: admin._id,
+          recipientModel: "Admin",
+          relatedEntityType: "none",
+          priority: "medium",
+        });
+        await notification.save();
+      }
+    } catch (notificationError) {
+      console.error("Error creating employee addition notification:", notificationError);
+    }
+
     const roleText =
       role === "admin" ? "Admin" : role === "manager" ? "Manager" : "Employee";
     res.status(201).json({
