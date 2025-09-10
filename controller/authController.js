@@ -268,3 +268,68 @@ exports.adminFaceLogin = async (req, res) => {
     });
   }
 };
+
+// Get current logged-in user details
+exports.getCurrentUser = async (req, res) => {
+  try {
+    // req.user is set by the authentication middleware
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    // Determine user type and fetch full details if needed
+    let userData = null;
+    let userType = req.user.role;
+
+    if (req.user.adminId) {
+      // Admin
+      const Admin = require("../models/Admin");
+      userData = await Admin.findById(req.user.adminId).select("-password");
+      userType = "admin";
+    } else if (req.user.managerId) {
+      // Manager
+      const Manager = require("../models/Manager");
+      userData = await Manager.findById(req.user.managerId).select("-password");
+      userType = "manager";
+    } else if (req.user.employeeId) {
+      // Employee
+      const Employee = require("../models/Employee");
+      userData = await Employee.findById(req.user.employeeId);
+      userType = "employee";
+    } else if (req.user.userId) {
+      // General User
+      const User = require("../models/User");
+      userData = await User.findById(req.user.userId).select("-password");
+      userType = userData?.role || "user";
+    } else if (req.user._id) {
+      // Fallback for User model
+      const User = require("../models/User");
+      userData = await User.findById(req.user._id).select("-password");
+      userType = userData?.role || "user";
+    }
+
+    if (!userData) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Current user details fetched successfully",
+      data: userData,
+      userType,
+    });
+  } catch (error) {
+    console.error("Error fetching current user details:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching current user details",
+      error: error.message,
+    });
+  }
+};

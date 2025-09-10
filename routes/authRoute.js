@@ -32,9 +32,14 @@ const upload = multer({
   },
 });
 
+const { authenticate } = require("../middleware/authMiddleware");
+
 // Updated routes with optional file upload
 router.post("/register", upload.single("faceImage"), authController.register);
 router.post("/login", upload.single("faceImage"), authController.login);
 router.post("/face-login", authController.adminFaceLogin);
+
+// New route: Get current logged-in user details
+router.get("/me", authenticate, authController.getCurrentUser);
 
 module.exports = router;
