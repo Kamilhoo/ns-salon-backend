@@ -233,7 +233,7 @@ exports.getAllEmployees = async (req, res) => {
 
     const employees = await Employee.find(filter)
       .sort({ createdAt: -1 })
-      .select("employeeId name phoneNumber role createdAt livePicture");
+      .select("employeeId name phoneNumber role createdAt livePicture idCardNumber monthlySalary");
 
     if (!employees || employees.length === 0) {
       return res.status(200).json({
