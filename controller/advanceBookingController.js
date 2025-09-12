@@ -79,7 +79,6 @@ const addAdvanceBooking = async (req, res) => {
     console.log("🔍 Received files:", req.files);
 
     const {
-      clientId,
       clientName,
       date,
       time,
@@ -91,7 +90,6 @@ const addAdvanceBooking = async (req, res) => {
 
     // Validate required fields with detailed logging
     console.log("🔍 Validating fields:");
-    console.log("clientId:", clientId, "Type:", typeof clientId);
     console.log("clientName:", clientName, "Type:", typeof clientName);
     console.log("date:", date, "Type:", typeof date);
     console.log("time:", time, "Type:", typeof time);
@@ -105,7 +103,6 @@ const addAdvanceBooking = async (req, res) => {
     console.log("description:", description, "Type:", typeof description);
 
     if (
-      !clientId ||
       !clientName ||
       !date ||
       !time ||
@@ -121,15 +118,6 @@ const addAdvanceBooking = async (req, res) => {
     }
 
     console.log("✅ All required fields are present");
-
-    // Check for unique clientId
-    const existingBooking = await AdvanceBooking.findOne({ clientId });
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: "clientId must be unique. This clientId already exists.",
-      });
-    }
 
     // Validate date and time
     const bookingDate = new Date(date);
@@ -181,7 +169,6 @@ const addAdvanceBooking = async (req, res) => {
 
     // Create booking
     const booking = new AdvanceBooking({
-      clientId,
       clientName,
       date: bookingDate,
       time,

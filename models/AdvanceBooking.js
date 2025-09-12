@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
 const advanceBookingSchema = new mongoose.Schema({
-  clientId: { type: String, required: true, unique: true },
   clientName: { type: String, required: true },
   date: { type: Date, required: true },
   time: { type: String, required: true },
