@@ -33,7 +33,7 @@ app.use(
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "production" ? 100 : 1000, // limit each IP to 100 requests per windowMs in production
+  max: 10000, // limit each IP to 100 requests per windowMs in production
   message: {
     error: "Too many requests from this IP, please try again after 15 minutes.",
   },
