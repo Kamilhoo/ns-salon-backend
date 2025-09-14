@@ -153,7 +153,12 @@ exports.addService = async (req, res) => {
 
 exports.getAllServices = async (req, res) => {
   try {
-    const services = await Service.find().sort({ createdAt: -1 });
+    const { type } = req.query;
+    let filter = {};
+    if (type === 'show') filter.status = 'show';
+    else if (type === 'hide') filter.status = 'hide';
+    // If type is 'all' or not provided, return all
+    const services = await Service.find(filter).sort({ createdAt: -1 });
     res.status(200).json(services);
   } catch (err) {
     console.error('Get All Services Error:', err);
@@ -406,6 +411,37 @@ exports.updateService = async (req, res) => {
     console.error('❌ Update Service Error:', err);
     res.status(500).json({
       message: 'Error updating service',
+      error: err.message
+    });
+  }
+};
+
+// Change service status (show/hide)
+exports.changeServiceStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!id || !['show', 'hide'].includes(status)) {
+      return res.status(400).json({
+        message: 'Invalid service ID or status. Status must be "show" or "hide".'
+      });
+    }
+    const updatedService = await Service.findByIdAndUpdate(
+      id,
+      { status, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    );
+    if (!updatedService) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+    res.status(200).json({
+      success: true,
+      message: `Service status changed to ${status}`,
+      service: updatedService
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: 'Error changing service status',
       error: err.message
     });
   }

@@ -11,7 +11,8 @@ const subServiceSchema = new mongoose.Schema({
 const serviceSchema = new mongoose.Schema({
   title: { type: String, required: true },
   image: String,
-  subServices: [subServiceSchema]
-});
+  subServices: [subServiceSchema],
+  status: { type: String, enum: ['show', 'hide'], default: 'show' },
+}, { timestamps: true });
 
 module.exports = mongoose.model('Service', serviceSchema);

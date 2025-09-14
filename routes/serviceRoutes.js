@@ -12,6 +12,7 @@ const {
   getServiceById,
   deleteService,
   updateService,
+  changeServiceStatus
 } = require("../controller/serviceController");
 
 // Configure multer with proper storage and error handling
@@ -79,6 +80,13 @@ router.delete(
   authenticate,
   authorizeRoles("admin"),
   deleteService
+);
+
+router.put(
+  "/admin/:id/status",
+  authenticate,
+  authorizeRoles("admin"),
+  changeServiceStatus
 );
 
 module.exports = router;
