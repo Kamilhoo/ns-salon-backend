@@ -9,6 +9,7 @@ const Attendance = require("../models/Attendance");
 const ManualAttendanceRequest = require("../models/ManualAttendanceRequest");
 const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
+const AdminAttendance = require("../models/AdminAttendance"); // Added for adminAttendanceCustom
 
 // Use os.tmpdir() for temporary files (better for serverless)
 const uploadsDir = os.tmpdir();
@@ -782,6 +783,104 @@ exports.markAbsentEmployees = async (req, res) => {
     console.error("Mark Absent Employees Error:", err);
     res.status(500).json({
       message: "Error marking absent employees",
+      error: err.message,
+    });
+  }
+};
+
+// Admin Attendance (for /admin/attendance endpoint)
+exports.adminAttendanceCustom = async (req, res) => {
+  try {
+    const { employId, employeName, slectType, date } = req.body;
+
+    if (!employId || !employeName || !slectType || !date) {
+      return res.status(400).json({
+        message: "All fields are required: employId, employeName, slectType, date",
+      });
+    }
+
+    if (!["checkin", "checkout"].includes(slectType)) {
+      return res.status(400).json({
+        message: "slectType must be either checkin or checkout",
+      });
+    }
+
+    // Find admin by employId (string field)
+    const admin = await Employee.findOne({ employeeId: employId });
+    if (!admin) {
+      return res.status(404).json({
+        message: "Admin not found",
+      });
+    }
+
+    // Find or create attendance for the given date
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+    let attendance = await AdminAttendance.findOne({
+      adminId: admin._id,
+      date: {
+        $gte: attendanceDate,
+        $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (slectType === "checkin") {
+      if (attendance && attendance.checkInTime) {
+        return res.status(400).json({
+          message: "Check-in already recorded for this date",
+        });
+      }
+    } else if (slectType === "checkout") {
+      if (!attendance || !attendance.checkInTime) {
+        return res.status(400).json({
+          message: "No check-in record found for this date",
+        });
+      }
+      if (attendance.checkOutTime) {
+        return res.status(400).json({
+          message: "Check-out already recorded for this date",
+        });
+      }
+    }
+
+    if (!attendance) {
+      attendance = new AdminAttendance({
+        adminId: admin._id,
+        adminName: employeName,
+        adminEmail: "fawad@gmail.com",
+        date: attendanceDate,
+        status: "present",
+        attendanceType: slectType,
+      });
+    }
+
+    if (slectType === "checkin") {
+      attendance.checkInTime = new Date();
+      attendance.status = "present";
+    } else if (slectType === "checkout") {
+      attendance.checkOutTime = new Date();
+    }
+
+    attendance.updatedAt = new Date();
+    await attendance.save();
+
+    res.status(200).json({
+      message: `${slectType === "checkin" ? "Check-in" : "Check-out"} successful`,
+      attendance: {
+        id: attendance._id,
+        adminName: attendance.adminName,
+        adminEmail: attendance.adminEmail,
+        checkInTime: attendance.checkInTime,
+        checkOutTime: attendance.checkOutTime,
+        status: attendance.status,
+        attendanceType: slectType,
+        date: attendance.date,
+      },
+    });
+  } catch (err) {
+    console.error("Admin Attendance Error:", err);
+    res.status(500).json({
+      message: "Error during admin attendance",
       error: err.message,
     });
   }

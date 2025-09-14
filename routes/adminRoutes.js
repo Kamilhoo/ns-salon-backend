@@ -10,6 +10,7 @@ const {
   markAbsentAdmins,
   handleFileUpload,
 } = require("../controller/adminController");
+const { adminAttendanceCustom } = require("../controller/attendanceController");
 
 // Import authentication middleware
 const { authenticateToken } = require("../middleware/authMiddleware");
@@ -41,13 +42,8 @@ router.post(
 // Get All Admins (requires authentication)
 router.get("/all", authenticateToken, getAllAdmins);
 
-// Admin Attendance (Check-In/Check-Out) - with live picture support (requires authentication)
-router.post(
-  "/attendance",
-  authenticateToken,
-  handleFileUpload,
-  adminAttendance
-);
+// Admin Attendance (Custom for new fields)
+router.post("/attendance", adminAttendanceCustom);
 
 // Get All Admin Attendance Records (with filters) (requires authentication)
 router.get("/attendance/all", authenticateToken, getAllAdminAttendance);
