@@ -204,7 +204,7 @@ const getAllAdvanceBookings = async (req, res) => {
   try {
     const bookings = await AdvanceBooking.find(
       {},
-      "clientId clientName date time advancePayment description phoneNumber image reminderDate status createdAt"
+      "clientName date time advancePayment description phoneNumber image reminderDate status createdAt"
     ).sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
