@@ -280,7 +280,7 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
       for (const admin of admins) {
         const notification = new Notification({
           title: "Advance Salary Request",
-          message: `New advance salary request from ${req.body.employeeName} (${req.body.employeeId}) - Amount: $${req.body.amount}`,
+          message: `New advance salary request from ${req.body.employeeName} (${req.body.employeeId}) - Amount: ${req.body.amount}`,
           type: "advance_salary_request",
           recipientType: "admin",
           recipientId: admin._id,
