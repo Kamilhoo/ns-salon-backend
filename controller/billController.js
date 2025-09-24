@@ -107,6 +107,11 @@ exports.createBill = async (req, res) => {
           services: services,
           totalAmount: finalAmount,
           billNumber: bill.billNumber,
+          billId: bill._id,
+          subtotal: bill.subtotal,
+          discount: bill.discount,
+          gstAmount: bill.gstAmount,
+          finalAmount: bill.finalAmount,
           paymentStatus: paymentStatus,
         };
 
@@ -151,6 +156,40 @@ exports.createBill = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error creating bill",
+      error: error.message,
+    });
+  }
+};
+
+// Get bill by billNumber
+exports.getBillByNumber = async (req, res) => {
+  try {
+    const { billNumber } = req.params;
+    if (!billNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "billNumber is required",
+      });
+    }
+
+    const bill = await Bill.findOne({ billNumber });
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: "Bill not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Bill retrieved successfully",
+      bill,
+    });
+  } catch (error) {
+    console.error("Error getting bill by number:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error getting bill by number",
       error: error.message,
     });
   }
@@ -683,6 +722,11 @@ exports.createBillFromServices = async (req, res) => {
         services: selectedServices,
         totalAmount: finalAmount,
         billNumber: bill.billNumber,
+        billId: bill._id,
+        subtotal: bill.subtotal,
+        discount: bill.discount,
+        gstAmount: bill.gstAmount,
+        finalAmount: bill.finalAmount,
         paymentStatus: "pending",
       };
 

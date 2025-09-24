@@ -44,12 +44,17 @@ const clientSchema = new mongoose.Schema({
         type: Date,
         required: true,
       },
+      billId: { type: mongoose.Schema.Types.ObjectId, ref: "Bill" },
       services: [
         {
           name: String,
           price: Number,
         },
       ],
+      subtotal: { type: Number },
+      discount: { type: Number },
+      gstAmount: { type: Number },
+      finalAmount: { type: Number },
       totalAmount: {
         type: Number,
         required: true,

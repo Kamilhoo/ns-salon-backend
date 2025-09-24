@@ -11,7 +11,10 @@ const {
 } = require("../controller/notificationController");
 
 // Import authentication middleware
-const { authenticate, authorizeRoles } = require("../middleware/authMiddleware");
+const {
+  authenticate,
+  authorizeRoles,
+} = require("../middleware/authMiddleware");
 
 // All routes require authentication
 router.use(authenticate);

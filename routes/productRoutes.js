@@ -7,6 +7,7 @@ const {
   deleteProduct,
   updateProduct,
   handleFileUpload,
+  changeProductStatus, // Import the new handler
 } = require("../controller/productController");
 
 const {
@@ -36,6 +37,14 @@ router.put(
   authorizeRoles("admin"),
   handleFileUpload,
   updateProduct
+);
+
+// Change product status (admin only)
+router.put(
+  "/:id/status",
+  authenticate,
+  authorizeRoles("admin"),
+  changeProductStatus
 );
 
 // Delete product (admin only)

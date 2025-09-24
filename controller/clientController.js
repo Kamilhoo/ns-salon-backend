@@ -412,6 +412,11 @@ exports.addVisitToClient = async (req, res) => {
       services: visitData.services || [],
       totalAmount: visitData.totalAmount || 0,
       billNumber: visitData.billNumber || `BILL${Date.now()}`,
+      billId: visitData.billId || undefined,
+      subtotal: visitData.subtotal || undefined,
+      discount: visitData.discount || undefined,
+      gstAmount: visitData.gstAmount || undefined,
+      finalAmount: visitData.finalAmount || visitData.totalAmount || 0,
       paymentStatus: visitData.paymentStatus || "pending",
     };
 
