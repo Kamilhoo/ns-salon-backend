@@ -4,7 +4,32 @@ const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
 const Manager = require("../models/Manager");
 const cloudinary = require("cloudinary").v2;
-const moment = require('moment-timezone');
+const moment = require("moment-timezone");
+
+// Helper function for proper reminder calculation
+const calculateReminderDateTime = (bookingDate, bookingTime) => {
+  try {
+    const TIMEZONE = "Asia/Karachi";
+    const dateStr = moment(bookingDate).format("YYYY-MM-DD");
+    const combinedStr = `${dateStr} ${bookingTime}`;
+
+    const bookingMoment = moment.tz(
+      combinedStr,
+      "YYYY-MM-DD hh:mm A",
+      TIMEZONE
+    );
+
+    if (!bookingMoment.isValid()) {
+      throw new Error(`Invalid date/time combination: ${combinedStr}`);
+    }
+
+    const reminderMoment = bookingMoment.clone().subtract(24, "hours");
+    return reminderMoment.toDate();
+  } catch (error) {
+    const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
+    return new Date(bookingDateTime.getTime() - 24 * 60 * 60 * 1000);
+  }
+};
 
 // Configure Cloudinary
 cloudinary.config({
@@ -13,7 +38,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Handle file upload middleware
+// Middleware for debugging file upload
 const handleFileUpload = (req, res, next) => {
   console.log("🔍 File upload middleware called");
   console.log("🔍 Request body:", req.body);
@@ -21,52 +46,14 @@ const handleFileUpload = (req, res, next) => {
   next();
 };
 
-const calculateReminderDateTime = (bookingDate, bookingTime) => {
-  try {
-    // Set Pakistan timezone (since you're in Multan)
-    const TIMEZONE = 'Asia/Karachi';
-    
-    // Parse date and time properly
-    const dateStr = moment(bookingDate).format('YYYY-MM-DD');
-    const combinedStr = `${dateStr} ${bookingTime}`;
-    
-    console.log('🔍 Calculating reminder for:', combinedStr);
-    
-    // Create moment with timezone
-    const bookingMoment = moment.tz(combinedStr, 'YYYY-MM-DD hh:mm A', TIMEZONE);
-    
-    if (!bookingMoment.isValid()) {
-      throw new Error(`Invalid date/time combination: ${combinedStr}`);
-    }
-    
-    // Subtract exactly 24 hours
-    const reminderMoment = bookingMoment.clone().subtract(24, 'hours');
-    
-    console.log('✅ Booking time:', bookingMoment.format('YYYY-MM-DD hh:mm A z'));
-    console.log('✅ Reminder time:', reminderMoment.format('YYYY-MM-DD hh:mm A z'));
-    
-    // Return as Date object for MongoDB
-    return reminderMoment.toDate();
-    
-  } catch (error) {
-    console.error('❌ Error calculating reminder time:', error);
-    // Fallback to simple 24hr subtraction
-    const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
-    return new Date(bookingDateTime.getTime() - (24 * 60 * 60 * 1000));
-  }
-};
-
 // Create advance booking reminder notification
 const createAdvanceBookingReminder = async (booking) => {
   try {
-    const bookingDate = new Date(booking.date);
-    const reminderDate = new Date(bookingDate.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+    const reminderDate = new Date(booking.reminderDate);
 
-    // Get all admins and managers
     const admins = await Admin.find({ isActive: { $ne: false } });
     const managers = await Manager.find({ isActive: { $ne: false } });
 
-    // Create notifications for admins
     for (const admin of admins) {
       const notification = new Notification({
         title: "Advance Booking Reminder",
@@ -83,7 +70,6 @@ const createAdvanceBookingReminder = async (booking) => {
       await notification.save();
     }
 
-    // Create notifications for managers
     for (const manager of managers) {
       const notification = new Notification({
         title: "Advance Booking Reminder",
@@ -99,22 +85,15 @@ const createAdvanceBookingReminder = async (booking) => {
       });
       await notification.save();
     }
-
-    console.log(
-      `✅ Created advance booking reminder notifications for booking ${booking._id}`
-    );
   } catch (error) {
     console.error("❌ Error creating advance booking reminder:", error);
   }
 };
 
-// Add Advance Booking
+// ✅ Corrected Add Advance Booking
 const addAdvanceBooking = async (req, res) => {
   try {
-    console.log("🔍 Received request body:", req.body);
-    console.log("🔍 Received files:", req.files);
-
-   const {
+    const {
       clientName,
       date,
       time,
@@ -122,22 +101,8 @@ const addAdvanceBooking = async (req, res) => {
       description,
       phoneNumber,
       image,
-      reminderDate, // This comes from frontend calculation
+      reminderDate,
     } = req.body;
-
-    // Validate required fields with detailed logging
-    console.log("🔍 Validating fields:");
-    console.log("clientName:", clientName, "Type:", typeof clientName);
-    console.log("date:", date, "Type:", typeof date);
-    console.log("time:", time, "Type:", typeof time);
-    console.log(
-      "advancePayment:",
-      advancePayment,
-      "Type:",
-      typeof advancePayment
-    );
-    console.log("phoneNumber:", phoneNumber, "Type:", typeof phoneNumber);
-    console.log("description:", description, "Type:", typeof description);
 
     if (
       !clientName ||
@@ -147,36 +112,20 @@ const addAdvanceBooking = async (req, res) => {
       !phoneNumber ||
       !description
     ) {
-      console.log("❌ Validation failed - missing fields detected");
       return res.status(400).json({
         success: false,
         message: "All fields are required",
       });
     }
 
-    console.log("✅ All required fields are present");
-    let calculatedReminderDate;
-     if (reminderDate) {
-      // If frontend sends reminderDate, use it
-      calculatedReminderDate = new Date(reminderDate);
-      console.log('✅ Using frontend calculated reminder:', reminderDate);
-    } else {
-      // Calculate reminder date properly
-      calculatedReminderDate = calculateReminderDateTime(date, time);
-      console.log('✅ Backend calculated reminder:', calculatedReminderDate);
-    }
-
-    // Validate date and time
     const bookingDate = new Date(date);
-    const currentDate = new Date();
-    if (bookingDate < currentDate) {
+    if (bookingDate < new Date()) {
       return res.status(400).json({
         success: false,
         message: "Booking date cannot be in the past",
       });
     }
 
-    // Validate advance payment
     if (advancePayment <= 0) {
       return res.status(400).json({
         success: false,
@@ -184,7 +133,6 @@ const addAdvanceBooking = async (req, res) => {
       });
     }
 
-    // Validate phone number
     const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
     if (!phoneRegex.test(phoneNumber)) {
       return res.status(400).json({
@@ -193,41 +141,41 @@ const addAdvanceBooking = async (req, res) => {
       });
     }
 
-    // Handle image upload
     let imageUrl = "";
     if (req.file) {
-      console.log("🔍 File uploaded:", req.file);
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "sarte-salon/bookings",
         resource_type: "auto",
       });
       imageUrl = result.secure_url;
-      console.log("🔍 Image uploaded to Cloudinary:", imageUrl);
     } else if (image) {
       imageUrl = image;
     } else {
-      // For now, use a placeholder image if no image is provided
       imageUrl = "https://via.placeholder.com/300x300?text=No+Image";
     }
 
-    // Calculate reminder date (24 hours before booking)
-    reminderDate.setHours(reminderDate.getHours() - 24);
+    let calculatedReminderDate;
+    if (reminderDate) {
+      calculatedReminderDate = new Date(reminderDate);
+    } else {
+      calculatedReminderDate = calculateReminderDateTime(date, time);
+    }
 
-    // Create booking
     const booking = new AdvanceBooking({
       clientName,
-      date: new Date(date),
+      date,
       time,
       advancePayment,
       description,
       phoneNumber,
       image: imageUrl,
-      reminderDate: calculatedReminderDate, // Use calculated reminder
+      reminderDate: calculatedReminderDate,
+      status: "pending",
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     await booking.save();
-
-    // Create advance booking reminder notification
     await createAdvanceBookingReminder(booking);
 
     res.status(201).json({
@@ -245,7 +193,7 @@ const addAdvanceBooking = async (req, res) => {
   }
 };
 
-// Get All Advance Bookings (no filters, only required fields)
+// Other CRUD functions remain same (no changes needed)
 const getAllAdvanceBookings = async (req, res) => {
   try {
     const bookings = await AdvanceBooking.find(
@@ -258,16 +206,10 @@ const getAllAdvanceBookings = async (req, res) => {
       data: bookings,
     });
   } catch (error) {
-    console.error("Error getting advance bookings:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get Upcoming Reminders (24 hours before booking)
 const getUpcomingReminders = async (req, res) => {
   try {
     const currentDate = new Date();
@@ -275,10 +217,7 @@ const getUpcomingReminders = async (req, res) => {
     next24Hours.setHours(next24Hours.getHours() + 24);
 
     const upcomingBookings = await AdvanceBooking.find({
-      reminderDate: {
-        $lte: next24Hours,
-        $gte: currentDate,
-      },
+      reminderDate: { $lte: next24Hours, $gte: currentDate },
       reminderSent: { $ne: true },
       status: { $ne: "cancelled" },
     });
@@ -289,35 +228,23 @@ const getUpcomingReminders = async (req, res) => {
       data: upcomingBookings,
     });
   } catch (error) {
-    console.error("Error getting upcoming reminders:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Mark Reminder as Sent
 const markReminderSent = async (req, res) => {
   try {
     const { bookingId } = req.params;
-
     const booking = await AdvanceBooking.findByIdAndUpdate(
       bookingId,
-      {
-        reminderSent: true,
-        reminderSentAt: new Date(),
-      },
+      { reminderSent: true, reminderSentAt: new Date() },
       { new: true }
     );
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
-    }
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
 
     res.status(200).json({
       success: true,
@@ -325,16 +252,10 @@ const markReminderSent = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error("Error marking reminder as sent:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Update Booking Status
 const updateBookingStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -342,28 +263,21 @@ const updateBookingStatus = async (req, res) => {
 
     const allowedStatuses = ["pending", "confirmed", "completed", "cancelled"];
     if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid status. Allowed values: pending, confirmed, completed, cancelled",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status value" });
     }
 
     const booking = await AdvanceBooking.findByIdAndUpdate(
       bookingId,
-      {
-        status,
-        updatedAt: new Date(),
-      },
+      { status, updatedAt: new Date() },
       { new: true }
     );
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
-    }
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
 
     res.status(200).json({
       success: true,
@@ -371,42 +285,30 @@ const updateBookingStatus = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error("Error updating booking status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Update Booking
 const updateBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const updateData = { ...req.body };
 
-    // Remove clientId from update data to prevent changes
     delete updateData.clientId;
 
-    // Validate date if provided
     if (updateData.date) {
       const bookingDate = new Date(updateData.date);
-      const currentDate = new Date();
-      if (bookingDate < currentDate) {
+      if (bookingDate < new Date()) {
         return res.status(400).json({
           success: false,
           message: "Booking date cannot be in the past",
         });
       }
-
-      // Recalculate reminder date
       const reminderDate = new Date(bookingDate);
       reminderDate.setHours(reminderDate.getHours() - 24);
       updateData.reminderDate = reminderDate;
     }
 
-    // Handle image upload
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "sarte-salon/bookings",
@@ -423,12 +325,10 @@ const updateBooking = async (req, res) => {
       { new: true }
     );
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
-    }
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
 
     res.status(200).json({
       success: true,
@@ -436,28 +336,19 @@ const updateBooking = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error("Error updating booking:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Delete Booking
 const deleteBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
-
     const booking = await AdvanceBooking.findByIdAndDelete(bookingId);
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
-    }
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
 
     res.status(200).json({
       success: true,
@@ -465,28 +356,19 @@ const deleteBooking = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error("Error deleting booking:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get Booking by ID
 const getBookingById = async (req, res) => {
   try {
     const { bookingId } = req.params;
-
     const booking = await AdvanceBooking.findById(bookingId);
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
-    }
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
 
     res.status(200).json({
       success: true,
@@ -494,16 +376,10 @@ const getBookingById = async (req, res) => {
       data: booking,
     });
   } catch (error) {
-    console.error("Error getting booking by ID:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get Booking Statistics
 const getBookingStats = async (req, res) => {
   try {
     const totalBookings = await AdvanceBooking.countDocuments();
@@ -520,7 +396,6 @@ const getBookingStats = async (req, res) => {
       status: "cancelled",
     });
 
-    // Calculate total advance payments
     const totalAdvancePayments = await AdvanceBooking.aggregate([
       { $group: { _id: null, total: { $sum: "$advancePayment" } } },
     ]);
@@ -528,14 +403,10 @@ const getBookingStats = async (req, res) => {
     const totalAdvanceAmount =
       totalAdvancePayments.length > 0 ? totalAdvancePayments[0].total : 0;
 
-    // Get upcoming bookings (next 7 days)
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     const upcomingBookings = await AdvanceBooking.countDocuments({
-      date: {
-        $gte: new Date(),
-        $lte: nextWeek,
-      },
+      date: { $gte: new Date(), $lte: nextWeek },
       status: { $ne: "cancelled" },
     });
 
@@ -553,12 +424,7 @@ const getBookingStats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error getting booking statistics:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
