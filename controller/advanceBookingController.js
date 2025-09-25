@@ -4,6 +4,7 @@ const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
 const Manager = require("../models/Manager");
 const cloudinary = require("cloudinary").v2;
+const moment = require('moment-timezone');
 
 // Configure Cloudinary
 cloudinary.config({
@@ -18,6 +19,41 @@ const handleFileUpload = (req, res, next) => {
   console.log("🔍 Request body:", req.body);
   console.log("🔍 Request files:", req.files);
   next();
+};
+
+const calculateReminderDateTime = (bookingDate, bookingTime) => {
+  try {
+    // Set Pakistan timezone (since you're in Multan)
+    const TIMEZONE = 'Asia/Karachi';
+    
+    // Parse date and time properly
+    const dateStr = moment(bookingDate).format('YYYY-MM-DD');
+    const combinedStr = `${dateStr} ${bookingTime}`;
+    
+    console.log('🔍 Calculating reminder for:', combinedStr);
+    
+    // Create moment with timezone
+    const bookingMoment = moment.tz(combinedStr, 'YYYY-MM-DD hh:mm A', TIMEZONE);
+    
+    if (!bookingMoment.isValid()) {
+      throw new Error(`Invalid date/time combination: ${combinedStr}`);
+    }
+    
+    // Subtract exactly 24 hours
+    const reminderMoment = bookingMoment.clone().subtract(24, 'hours');
+    
+    console.log('✅ Booking time:', bookingMoment.format('YYYY-MM-DD hh:mm A z'));
+    console.log('✅ Reminder time:', reminderMoment.format('YYYY-MM-DD hh:mm A z'));
+    
+    // Return as Date object for MongoDB
+    return reminderMoment.toDate();
+    
+  } catch (error) {
+    console.error('❌ Error calculating reminder time:', error);
+    // Fallback to simple 24hr subtraction
+    const bookingDateTime = new Date(`${bookingDate}T${bookingTime}`);
+    return new Date(bookingDateTime.getTime() - (24 * 60 * 60 * 1000));
+  }
 };
 
 // Create advance booking reminder notification
@@ -78,7 +114,7 @@ const addAdvanceBooking = async (req, res) => {
     console.log("🔍 Received request body:", req.body);
     console.log("🔍 Received files:", req.files);
 
-    const {
+   const {
       clientName,
       date,
       time,
@@ -86,6 +122,7 @@ const addAdvanceBooking = async (req, res) => {
       description,
       phoneNumber,
       image,
+      reminderDate, // This comes from frontend calculation
     } = req.body;
 
     // Validate required fields with detailed logging
@@ -118,6 +155,16 @@ const addAdvanceBooking = async (req, res) => {
     }
 
     console.log("✅ All required fields are present");
+    let calculatedReminderDate;
+     if (reminderDate) {
+      // If frontend sends reminderDate, use it
+      calculatedReminderDate = new Date(reminderDate);
+      console.log('✅ Using frontend calculated reminder:', reminderDate);
+    } else {
+      // Calculate reminder date properly
+      calculatedReminderDate = calculateReminderDateTime(date, time);
+      console.log('✅ Backend calculated reminder:', calculatedReminderDate);
+    }
 
     // Validate date and time
     const bookingDate = new Date(date);
@@ -164,19 +211,18 @@ const addAdvanceBooking = async (req, res) => {
     }
 
     // Calculate reminder date (24 hours before booking)
-    const reminderDate = new Date(bookingDate);
     reminderDate.setHours(reminderDate.getHours() - 24);
 
     // Create booking
     const booking = new AdvanceBooking({
       clientName,
-      date: bookingDate,
+      date: new Date(date),
       time,
       advancePayment,
       description,
       phoneNumber,
       image: imageUrl,
-      reminderDate,
+      reminderDate: calculatedReminderDate, // Use calculated reminder
     });
 
     await booking.save();
