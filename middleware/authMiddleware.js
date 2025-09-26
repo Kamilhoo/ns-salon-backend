@@ -62,13 +62,19 @@ const authenticateToken = async (req, res, next) => {
         // Check if it's an admin token
         if (decoded.adminId) {
           console.log("🔑 [Auth Middleware] Admin token detected");
+          console.log(
+            "🔑 [Auth Middleware] Looking up admin with ID:",
+            decoded.adminId
+          );
           const admin = await Admin.findById(decoded.adminId);
           if (!admin) {
+            console.log("❌ [Auth Middleware] Admin not found in database");
             return res.status(401).json({
               message: "Invalid token. Admin not found.",
             });
           }
 
+          console.log("✅ [Auth Middleware] Admin found:", admin.name);
           req.user = {
             adminId: admin._id,
             name: admin.name,
@@ -80,8 +86,21 @@ const authenticateToken = async (req, res, next) => {
           return next();
         }
 
-        // Fallback for other JWT tokens
-        req.user = decoded;
+        // Fallback for other JWT tokens - ensure adminId is preserved
+        console.log("🔑 [Auth Middleware] Using fallback JWT token handling");
+        console.log("🔑 [Auth Middleware] Decoded token:", decoded);
+
+        // If the decoded token has adminId, preserve it in req.user
+        if (decoded.adminId) {
+          req.user = {
+            adminId: decoded.adminId,
+            name: decoded.name,
+            role: decoded.role || "admin",
+            email: decoded.email,
+          };
+        } else {
+          req.user = decoded;
+        }
         req.isAuthenticated = true;
         return next();
       } catch (jwtError) {

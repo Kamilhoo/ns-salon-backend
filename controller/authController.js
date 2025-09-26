@@ -235,6 +235,12 @@ exports.adminFaceLogin = async (req, res) => {
     }
 
     // Generate JWT token
+    console.log("🔑 [Face Login] Creating JWT token for admin:", {
+      adminId: admin._id,
+      email: admin.email || admin.username,
+      role: admin.role || "admin",
+    });
+
     const token = jwt.sign(
       {
         adminId: admin._id,
@@ -244,6 +250,8 @@ exports.adminFaceLogin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
+
+    console.log("✅ [Face Login] JWT token created successfully");
 
     res.status(200).json({
       success: true,

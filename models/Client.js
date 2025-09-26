@@ -65,6 +65,9 @@ const clientSchema = new mongoose.Schema({
         enum: ["pending", "paid"],
         default: "pending",
       },
+      // Additional fields for complete bill information
+      notes: { type: String, default: "" },
+      specialist: { type: String, default: "" }, // beautician
     },
   ],
   createdAt: {

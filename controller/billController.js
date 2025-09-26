@@ -100,7 +100,7 @@ exports.createBill = async (req, res) => {
         // Generate visit ID
         const visitId = `VISIT${Date.now()}`;
 
-        // Create new visit
+        // Create new visit with complete bill information
         const newVisit = {
           visitId,
           date: new Date(),
@@ -113,6 +113,9 @@ exports.createBill = async (req, res) => {
           gstAmount: bill.gstAmount,
           finalAmount: bill.finalAmount,
           paymentStatus: paymentStatus,
+          // Store reference to full bill for complete data retrieval
+          notes: bill.notes || "",
+          specialist: bill.specialist || "",
         };
 
         // Add visit to client
@@ -728,6 +731,9 @@ exports.createBillFromServices = async (req, res) => {
         gstAmount: bill.gstAmount,
         finalAmount: bill.finalAmount,
         paymentStatus: "pending",
+        // Store complete bill information for history
+        notes: bill.notes || "",
+        specialist: bill.specialist || "",
       };
 
       client.visits.push(newVisit);

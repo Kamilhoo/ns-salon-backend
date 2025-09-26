@@ -6,8 +6,19 @@ const Manager = require("../models/Manager");
 exports.getNotifications = async (req, res) => {
   try {
     const { page = 1, limit = 20, type, isRead } = req.query;
+
+    console.log("🔔 [Notifications] Getting notifications for user:", req.user);
+    console.log("🔔 [Notifications] User ID extraction:", {
+      adminId: req.user.adminId,
+      managerId: req.user.managerId,
+      _id: req.user._id,
+    });
+
     const userId = req.user.adminId || req.user.managerId || req.user._id;
     const userRole = req.user.role;
+
+    console.log("🔔 [Notifications] Final user ID:", userId);
+    console.log("🔔 [Notifications] User role:", userRole);
 
     // Build filter
     const filter = {

@@ -353,9 +353,87 @@ exports.getClientHistory = async (req, res) => {
       });
     }
 
+    // Get complete bill data for each visit that has a billId
+    const Bill = require("../models/Bill");
+    const visitsWithCompleteData = await Promise.all(
+      client.visits.map(async (visit) => {
+        try {
+          // If visit has billId, fetch complete bill data
+          if (visit.billId) {
+            const fullBill = await Bill.findById(visit.billId);
+            if (fullBill) {
+              return {
+                visitId: visit.visitId,
+                date: visit.date,
+                billNumber: visit.billNumber || fullBill.billNumber,
+                billId: visit.billId,
+
+                // Complete bill information
+                services: fullBill.services || visit.services,
+                subtotal: fullBill.subtotal || visit.subtotal,
+                discount: fullBill.discount || visit.discount,
+                gstAmount: fullBill.gstAmount || visit.gstAmount,
+                gstPercentage: fullBill.gstPercentage || 0,
+                finalAmount: fullBill.finalAmount || visit.finalAmount,
+                totalAmount: fullBill.finalAmount || visit.totalAmount,
+
+                // Previously missing fields - now included!
+                notes: fullBill.notes || "",
+                specialist: fullBill.specialist || "", // beautician
+                appointmentDate: fullBill.appointmentDate,
+                startTime: fullBill.startTime,
+                totalDuration: fullBill.totalDuration,
+                paymentMethod: fullBill.paymentMethod,
+                paymentStatus: fullBill.paymentStatus || visit.paymentStatus,
+
+                // Additional bill details
+                amountBeforeGST: fullBill.amountBeforeGST,
+                createdAt: fullBill.createdAt,
+              };
+            }
+          }
+
+          // Fallback to visit data if no bill found
+          return {
+            visitId: visit.visitId,
+            date: visit.date,
+            billNumber: visit.billNumber,
+            billId: visit.billId,
+            services: visit.services,
+            subtotal: visit.subtotal,
+            discount: visit.discount,
+            gstAmount: visit.gstAmount,
+            gstPercentage: 0,
+            finalAmount: visit.finalAmount,
+            totalAmount: visit.totalAmount,
+            notes: "",
+            specialist: "",
+            paymentStatus: visit.paymentStatus,
+          };
+        } catch (error) {
+          console.error(
+            "Error fetching bill data for visit:",
+            visit.visitId,
+            error
+          );
+          // Return visit data as fallback
+          return visit;
+        }
+      })
+    );
+
     // Sort visits by date (newest first)
-    const sortedVisits = client.visits.sort(
+    const sortedVisits = visitsWithCompleteData.sort(
       (a, b) => new Date(b.date) - new Date(a.date)
+    );
+
+    console.log(
+      "🔔 [Client History] Retrieved complete bill data for client:",
+      client.name
+    );
+    console.log(
+      "🔔 [Client History] Total visits with complete data:",
+      sortedVisits.length
     );
 
     res.status(200).json({
@@ -372,6 +450,7 @@ exports.getClientHistory = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Error fetching client history:", err);
     res.status(500).json({
       success: false,
       message: "Error fetching client history",
