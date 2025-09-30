@@ -7,6 +7,7 @@ const { compareFaces, detectFaces } = require("../config/aws");
 
 // Simple in-memory cache for face comparison results
 const faceComparisonCache = new Map();
+
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
 // Convert image to base64
