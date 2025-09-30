@@ -361,6 +361,68 @@ exports.managerFaceLogin = async (req, res) => {
       );
       manager = await Manager.findOne({ managerId: managerId });
     }
+
+    // If still not found, try Admin collection
+    if (!manager) {
+      try {
+        const Admin = require("../models/Admin");
+        manager = await Admin.findById(managerId);
+      } catch (e) {
+        console.log("Admin model not found or error loading Admin model", e);
+      }
+    }
+
+    // If still not found, try User collection for admin role
+    if (!manager) {
+      try {
+        const User = require("../models/User");
+        manager = await User.findOne({ _id: managerId, role: "admin" });
+      } catch (e) {
+        console.log("User model not found or error loading User model", e);
+      }
+    }
+
+    // If still not found, try Employee collection for admin role
+    if (!manager) {
+      try {
+        const Employee = require("../models/Employee");
+        manager = await Employee.findOne({ _id: managerId, role: "admin" });
+        if (manager) {
+          // For Employee-admin, adapt the response fields
+          // Generate JWT token
+          const token = jwt.sign(
+            {
+              managerId: manager._id,
+              email: manager.email || null,
+              role: manager.role,
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: "24h" }
+          );
+          return res.status(200).json({
+            success: true,
+            message: "Face login successful (Employee-admin)",
+            data: {
+              token,
+              manager: {
+                managerId: manager.employeeId || manager._id,
+                name: manager.name,
+                email: manager.email || null,
+                phoneNumber: manager.phoneNumber || null,
+                role: manager.role,
+                lastLogin: new Date(),
+              },
+            },
+          });
+        }
+      } catch (e) {
+        console.log(
+          "Employee model not found or error loading Employee model",
+          e
+        );
+      }
+    }
+
     if (!manager) {
       console.log(
         "❌ [Manager Face Login] Manager not found with ID:",
@@ -373,8 +435,8 @@ exports.managerFaceLogin = async (req, res) => {
     }
     console.log("✅ [Manager Face Login] Manager found:", manager.name);
 
-    // Check if manager is active
-    if (!manager.isActive) {
+    // Check if manager is active (skip for Admin/User/Employee-admin if not present)
+    if (typeof manager.isActive !== "undefined" && !manager.isActive) {
       return res.status(401).json({
         success: false,
         message: "Account is deactivated. Please contact administrator.",
@@ -403,17 +465,21 @@ exports.managerFaceLogin = async (req, res) => {
       data: {
         token,
         manager: {
-          managerId: manager.managerId,
+          managerId:
+            manager.managerId ||
+            manager.adminId ||
+            manager.employeeId ||
+            manager._id,
           name: manager.name,
-          email: manager.email,
-          phoneNumber: manager.phoneNumber,
+          email: manager.email || null,
+          phoneNumber: manager.phoneNumber || null,
           role: manager.role,
           lastLogin: new Date(),
         },
       },
     });
   } catch (error) {
-    console.error("Manager Face Login Error:", error);
+    console.error("Manager Login Error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -764,7 +830,9 @@ exports.login = async (req, res) => {
           
           // Early exit if we get a very high match (95%+)
           if (faceComparison.similarity >= 95) {
-            console.log(`High confidence match found: ${faceComparison.similarity}%`);
+            console.log(
+              `High confidence match found: ${faceComparison.similarity}%`
+            );
             break;
           }
         }

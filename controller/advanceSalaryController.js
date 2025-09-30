@@ -270,6 +270,7 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
       image: imageResult.secure_url,
       submittedBy: req.user.managerId || req.user.adminId, // From JWT token
       submittedByName: req.user.name || req.user.email,
+      submittedByRole: req.user.role, // <-- Save the role of the submitter!
     });
 
     await advanceSalary.save();
@@ -350,16 +351,22 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
       if (employeeData) {
         // Check if it's an employee or admin/manager
         if (employeeData.employeeId) {
-          // This is an employee
           employeeId = employeeData.employeeId;
           employeeName = employeeData.name;
           role = "Employee";
         } else if (employeeData.adminId) {
-          // This is an admin/manager
           employeeId = employeeData.adminId;
           employeeName = employeeData.name;
           role = employeeData.role || "Manager";
         }
+      }
+
+      // --- MAIN CHANGE: Use submittedByRole if present ---
+      if (request.submittedByRole) {
+        // Capitalize first letter
+        role =
+          request.submittedByRole.charAt(0).toUpperCase() +
+          request.submittedByRole.slice(1).toLowerCase();
       }
 
       return {
