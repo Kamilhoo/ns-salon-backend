@@ -112,12 +112,31 @@ exports.addClient = async (req, res) => {
 // Get all clients
 exports.getAllClients = async (req, res) => {
   try {
-    const clients = await Client.find().select(
-      "clientId name phoneNumber totalVisits totalSpent lastVisit createdAt"
-    );
+    const { page = 1, limit = 10 } = req.query;
+    
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const clients = await Client.find()
+      .select("clientId name phoneNumber totalVisits totalSpent lastVisit createdAt")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const totalClients = await Client.countDocuments();
+    
     res.status(200).json({
       success: true,
-      clients,
+      data: {
+        clients,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalClients / parseInt(limit)),
+          totalClients,
+          hasNext: skip + clients.length < totalClients,
+          hasPrev: parseInt(page) > 1,
+        },
+      },
     });
   } catch (err) {
     res.status(500).json({
@@ -406,9 +425,13 @@ exports.getClientHistory = async (req, res) => {
             gstPercentage: 0,
             finalAmount: visit.finalAmount,
             totalAmount: visit.totalAmount,
-            notes: "",
-            specialist: "",
+            notes: visit.notes || "",
+            specialist: visit.specialist || "",
             paymentStatus: visit.paymentStatus,
+            appointmentDate: visit.appointmentDate,
+            startTime: visit.startTime,
+            totalDuration: visit.totalDuration,
+            paymentMethod: visit.paymentMethod,
           };
         } catch (error) {
           console.error(

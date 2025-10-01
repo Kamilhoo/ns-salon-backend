@@ -695,7 +695,7 @@ exports.approveDeclineManualRequest = async (req, res) => {
 // Get All Attendance Records
 exports.getAllAttendanceRecords = async (req, res) => {
   try {
-    const { date, employeeId, status } = req.query;
+    const { date, employeeId, status, page = 1, limit = 10 } = req.query;
 
     let filter = {};
 
@@ -716,15 +716,25 @@ exports.getAllAttendanceRecords = async (req, res) => {
       filter.status = status;
     }
 
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
     const attendanceRecords = await Attendance.find(filter)
       .populate("employeeId", "name employeeId role") // Include role in population
-      .sort({ date: -1, createdAt: -1 });
+      .sort({ date: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
 
     // Also get admin attendance records
-    const adminAttendanceRecords = await AdminAttendance.find(filter).sort({
-      date: -1,
-      createdAt: -1,
-    });
+    const adminAttendanceRecords = await AdminAttendance.find(filter)
+      .sort({ date: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total counts for pagination
+    const totalAttendanceRecords = await Attendance.countDocuments(filter);
+    const totalAdminRecords = await AdminAttendance.countDocuments(filter);
+    const totalRecords = totalAttendanceRecords + totalAdminRecords;
 
     // Combine and format both types of attendance records
     const combinedRecords = [
@@ -746,7 +756,20 @@ exports.getAllAttendanceRecords = async (req, res) => {
     // Sort combined records by date
     combinedRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    res.status(200).json(combinedRecords);
+    res.status(200).json({
+      success: true,
+      message: "Attendance records retrieved successfully",
+      data: {
+        records: combinedRecords,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalRecords / parseInt(limit)),
+          totalRecords,
+          hasNext: skip + combinedRecords.length < totalRecords,
+          hasPrev: parseInt(page) > 1,
+        },
+      },
+    });
   } catch (err) {
     console.error("Get All Attendance Records Error:", err);
     res.status(500).json({

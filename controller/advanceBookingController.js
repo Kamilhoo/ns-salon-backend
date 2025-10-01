@@ -196,14 +196,34 @@ const addAdvanceBooking = async (req, res) => {
 // Other CRUD functions remain same (no changes needed)
 const getAllAdvanceBookings = async (req, res) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+    
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
     const bookings = await AdvanceBooking.find(
       {},
       "clientName date time advancePayment description phoneNumber image reminderDate status createdAt"
-    ).sort({ createdAt: -1 });
+    )
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+    
+    const totalBookings = await AdvanceBooking.countDocuments();
+    
     res.status(200).json({
       success: true,
       message: "Bookings retrieved successfully",
-      data: bookings,
+      data: {
+        bookings,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalBookings / parseInt(limit)),
+          totalBookings,
+          hasNext: skip + bookings.length < totalBookings,
+          hasPrev: parseInt(page) > 1,
+        },
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

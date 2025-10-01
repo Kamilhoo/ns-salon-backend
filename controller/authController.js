@@ -239,6 +239,7 @@ exports.adminFaceLogin = async (req, res) => {
       adminId: admin._id,
       email: admin.email || admin.username,
       role: admin.role || "admin",
+      name: admin.name || admin.username,
     });
 
     const token = jwt.sign(
@@ -246,6 +247,7 @@ exports.adminFaceLogin = async (req, res) => {
         adminId: admin._id,
         email: admin.email || admin.username,
         role: admin.role || "admin",
+        name: admin.name || admin.username,
       },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }

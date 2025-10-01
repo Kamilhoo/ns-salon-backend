@@ -270,7 +270,7 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
       image: imageResult.secure_url,
       submittedBy: req.user.managerId || req.user.adminId, // From JWT token
       submittedByName: req.user.name || req.user.email,
-      submittedByRole: req.user.role, // <-- Save the role of the submitter!
+      submittedByRole: req.user.role || "employee", // ← Enhanced: Add fallback
     });
 
     await advanceSalary.save();
@@ -323,7 +323,7 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
     console.log("🔍 [AdvanceSalary] User info:", req.user);
     console.log("🔍 [AdvanceSalary] Query params:", req.query);
 
-    const { status } = req.query;
+    const { status, page = 1, limit = 10 } = req.query;
 
     const filter = {};
     if (status) {
@@ -332,9 +332,16 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
 
     console.log("🔍 [AdvanceSalary] Filter:", filter);
 
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
     const advanceSalaryRequests = await AdvanceSalary.find(filter)
       .populate("employeeId", "employeeId name adminId role")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const totalRequests = await AdvanceSalary.countDocuments(filter);
 
     console.log(
       "✅ [AdvanceSalary] Found requests:",
@@ -382,7 +389,20 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
       };
     });
 
-    res.status(200).json(transformedRequests);
+    res.status(200).json({
+      success: true,
+      message: "Advance salary requests retrieved successfully",
+      data: {
+        requests: transformedRequests,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalRequests / parseInt(limit)),
+          totalRequests,
+          hasNext: skip + transformedRequests.length < totalRequests,
+          hasPrev: parseInt(page) > 1,
+        },
+      },
+    });
   } catch (err) {
     console.error("Get All Advance Salary Requests Error:", err);
     res.status(500).json({
