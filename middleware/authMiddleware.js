@@ -66,57 +66,24 @@ const authenticateToken = async (req, res, next) => {
             "🔑 [Auth Middleware] Looking up admin with ID:",
             decoded.adminId
           );
-          
-          // Try Admin collection first
-          let admin = await Admin.findById(decoded.adminId);
-          if (admin) {
-            console.log("✅ [Auth Middleware] Admin found in Admin collection:", admin.name);
-            req.user = {
-              adminId: admin._id,
-              name: admin.name,
-              role: "admin",
-              email: admin.email,
-            };
-            req.admin = admin;
-            req.isAuthenticated = true;
-            return next();
+          const admin = await Admin.findById(decoded.adminId);
+          if (!admin) {
+            console.log("❌ [Auth Middleware] Admin not found in database");
+            return res.status(401).json({
+              message: "Invalid token. Admin not found.",
+            });
           }
 
-          // Try User collection for admin role
-          console.log("🔍 [Auth Middleware] Trying User collection for admin...");
-          const User = require("../models/User");
-          const userAdmin = await User.findOne({ _id: decoded.adminId, role: "admin" });
-          if (userAdmin) {
-            console.log("✅ [Auth Middleware] Admin found in User collection:", userAdmin.username);
-            req.user = {
-              adminId: userAdmin._id,
-              name: userAdmin.username || userAdmin.name,
-              role: "admin",
-              email: userAdmin.email || userAdmin.username,
-            };
-            req.isAuthenticated = true;
-            return next();
-          }
-
-          // Try Employee collection for admin role
-          console.log("🔍 [Auth Middleware] Trying Employee collection for admin...");
-          const employeeAdmin = await Employee.findOne({ _id: decoded.adminId, role: "admin" });
-          if (employeeAdmin) {
-            console.log("✅ [Auth Middleware] Admin found in Employee collection:", employeeAdmin.name);
-            req.user = {
-              adminId: employeeAdmin._id,
-              name: employeeAdmin.name,
-              role: "admin",
-              email: employeeAdmin.email || `${employeeAdmin.name.toLowerCase()}@salon.com`,
-            };
-            req.isAuthenticated = true;
-            return next();
-          }
-
-          console.log("❌ [Auth Middleware] Admin not found in any collection");
-          return res.status(401).json({
-            message: "Invalid token. Admin not found.",
-          });
+          console.log("✅ [Auth Middleware] Admin found:", admin.name);
+          req.user = {
+            adminId: admin._id,
+            name: admin.name,
+            role: "admin",
+            email: admin.email,
+          };
+          req.admin = admin;
+          req.isAuthenticated = true;
+          return next();
         }
 
         // Fallback for other JWT tokens - ensure adminId is preserved

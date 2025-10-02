@@ -139,33 +139,13 @@ exports.addExpense = async (req, res) => {
 // Get All Expenses (only approved expenses)
 exports.getAllExpenses = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
     const expenses = await Expense.find(
       { status: "approved" },
       "name price description image createdAt"
-    )
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(parseInt(limit));
-    
-    const totalExpenses = await Expense.countDocuments({ status: "approved" });
-    
+    );
     res.status(200).json({
       success: true,
-      data: {
-        expenses,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalExpenses / parseInt(limit)),
-          totalExpenses,
-          hasNext: skip + expenses.length < totalExpenses,
-          hasPrev: parseInt(page) > 1,
-        },
-      },
+      data: expenses,
     });
   } catch (err) {
     res.status(500).json({

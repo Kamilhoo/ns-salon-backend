@@ -112,31 +112,12 @@ exports.addClient = async (req, res) => {
 // Get all clients
 exports.getAllClients = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-    
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    const clients = await Client.find()
-      .select("clientId name phoneNumber totalVisits totalSpent lastVisit createdAt")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-    
-    const totalClients = await Client.countDocuments();
-    
+    const clients = await Client.find().select(
+      "clientId name phoneNumber totalVisits totalSpent lastVisit createdAt"
+    );
     res.status(200).json({
       success: true,
-      data: {
-        clients,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalClients / parseInt(limit)),
-          totalClients,
-          hasNext: skip + clients.length < totalClients,
-          hasPrev: parseInt(page) > 1,
-        },
-      },
+      clients,
     });
   } catch (err) {
     res.status(500).json({
@@ -425,13 +406,9 @@ exports.getClientHistory = async (req, res) => {
             gstPercentage: 0,
             finalAmount: visit.finalAmount,
             totalAmount: visit.totalAmount,
-            notes: visit.notes || "",
-            specialist: visit.specialist || "",
+            notes: "",
+            specialist: "",
             paymentStatus: visit.paymentStatus,
-            appointmentDate: visit.appointmentDate,
-            startTime: visit.startTime,
-            totalDuration: visit.totalDuration,
-            paymentMethod: visit.paymentMethod,
           };
         } catch (error) {
           console.error(
@@ -483,13 +460,10 @@ exports.getClientHistory = async (req, res) => {
 };
 
 // Add visit to client (NEW FUNCTION)
-// Add visit to client (FIXED FUNCTION)
 exports.addVisitToClient = async (req, res) => {
   try {
     const { clientId } = req.params;
     const { visitData } = req.body;
-
-    console.log("📥 Add Visit Request:", { clientId, visitData });
 
     if (!clientId || !visitData) {
       return res.status(400).json({
@@ -510,7 +484,7 @@ exports.addVisitToClient = async (req, res) => {
     // Generate visit ID
     const visitId = `VISIT${Date.now()}`;
 
-    // ✅ FIXED: Include notes and specialist fields
+    // Create new visit
     const newVisit = {
       visitId,
       date: new Date(),
@@ -519,17 +493,11 @@ exports.addVisitToClient = async (req, res) => {
       billNumber: visitData.billNumber || `BILL${Date.now()}`,
       billId: visitData.billId || undefined,
       subtotal: visitData.subtotal || undefined,
-      discount: visitData.discount || 0, // ✅ Added default value
+      discount: visitData.discount || undefined,
       gstAmount: visitData.gstAmount || undefined,
       finalAmount: visitData.finalAmount || visitData.totalAmount || 0,
       paymentStatus: visitData.paymentStatus || "pending",
-
-      // ✅ CRITICAL FIX: Add notes and specialist fields
-      notes: visitData.notes || "",
-      specialist: visitData.specialist || "",
     };
-
-    console.log("📝 New Visit Object:", newVisit);
 
     // Add visit to client
     client.visits.push(newVisit);
@@ -538,8 +506,6 @@ exports.addVisitToClient = async (req, res) => {
     client.lastVisit = new Date();
 
     await client.save();
-
-    console.log("✅ Visit added successfully to client:", client.name);
 
     res.status(200).json({
       success: true,
@@ -552,7 +518,6 @@ exports.addVisitToClient = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Error adding visit:", err);
     res.status(500).json({
       success: false,
       message: "Error adding visit",

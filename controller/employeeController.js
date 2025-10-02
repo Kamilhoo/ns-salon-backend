@@ -245,7 +245,7 @@ exports.addEmployee = async (req, res) => {
 // Get All Employees (with role filter)
 exports.getAllEmployees = async (req, res) => {
   try {
-    const { role, page = 1, limit = 10 } = req.query;
+    const { role } = req.query;
     let filter = {};
 
     // Filter by role if specified
@@ -253,16 +253,9 @@ exports.getAllEmployees = async (req, res) => {
       filter.role = role;
     }
 
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const employees = await Employee.find(filter)
       .sort({ createdAt: -1 })
-      .select("employeeId name phoneNumber role createdAt livePicture idCardNumber monthlySalary")
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const totalEmployees = await Employee.countDocuments(filter);
+      .select("employeeId name phoneNumber role createdAt livePicture idCardNumber monthlySalary");
 
     if (!employees || employees.length === 0) {
       return res.status(200).json({
@@ -287,18 +280,9 @@ exports.getAllEmployees = async (req, res) => {
     // ✅ Return both array + grouped
     res.status(200).json({
       message: "Employees retrieved successfully",
-      data: {
-        employees, // simple array for frontend
-        grouped: groupedEmployees, // grouped version if needed
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalEmployees / parseInt(limit)),
-          totalEmployees,
-          hasNext: skip + employees.length < totalEmployees,
-          hasPrev: parseInt(page) > 1,
-        },
-      },
+      data: employees, // simple array for frontend
       total: employees.length,
+      grouped: groupedEmployees, // grouped version if needed
     });
   } catch (err) {
     console.error("Get All Employees Error:", err);

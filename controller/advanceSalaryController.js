@@ -270,7 +270,6 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
       image: imageResult.secure_url,
       submittedBy: req.user.managerId || req.user.adminId, // From JWT token
       submittedByName: req.user.name || req.user.email,
-      submittedByRole: req.user.role || "employee", // ← Enhanced: Add fallback
     });
 
     await advanceSalary.save();
@@ -323,7 +322,7 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
     console.log("🔍 [AdvanceSalary] User info:", req.user);
     console.log("🔍 [AdvanceSalary] Query params:", req.query);
 
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status } = req.query;
 
     const filter = {};
     if (status) {
@@ -332,16 +331,9 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
 
     console.log("🔍 [AdvanceSalary] Filter:", filter);
 
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const advanceSalaryRequests = await AdvanceSalary.find(filter)
       .populate("employeeId", "employeeId name adminId role")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const totalRequests = await AdvanceSalary.countDocuments(filter);
+      .sort({ createdAt: -1 });
 
     console.log(
       "✅ [AdvanceSalary] Found requests:",
@@ -358,22 +350,16 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
       if (employeeData) {
         // Check if it's an employee or admin/manager
         if (employeeData.employeeId) {
+          // This is an employee
           employeeId = employeeData.employeeId;
           employeeName = employeeData.name;
           role = "Employee";
         } else if (employeeData.adminId) {
+          // This is an admin/manager
           employeeId = employeeData.adminId;
           employeeName = employeeData.name;
           role = employeeData.role || "Manager";
         }
-      }
-
-      // --- MAIN CHANGE: Use submittedByRole if present ---
-      if (request.submittedByRole) {
-        // Capitalize first letter
-        role =
-          request.submittedByRole.charAt(0).toUpperCase() +
-          request.submittedByRole.slice(1).toLowerCase();
       }
 
       return {
@@ -389,20 +375,7 @@ exports.getAllAdvanceSalaryRequests = async (req, res) => {
       };
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Advance salary requests retrieved successfully",
-      data: {
-        requests: transformedRequests,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalRequests / parseInt(limit)),
-          totalRequests,
-          hasNext: skip + transformedRequests.length < totalRequests,
-          hasPrev: parseInt(page) > 1,
-        },
-      },
-    });
+    res.status(200).json(transformedRequests);
   } catch (err) {
     console.error("Get All Advance Salary Requests Error:", err);
     res.status(500).json({

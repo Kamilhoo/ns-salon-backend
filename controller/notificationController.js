@@ -19,7 +19,6 @@ exports.getNotifications = async (req, res) => {
 
     console.log("🔔 [Notifications] Final user ID:", userId);
     console.log("🔔 [Notifications] User role:", userRole);
-    console.log("🔔 [Notifications] Authentication method:", req.user.adminId ? "Admin" : req.user.managerId ? "Manager" : "User");
 
     // Build filter
     const filter = {

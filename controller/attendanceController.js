@@ -310,13 +310,11 @@ exports.employeeCheckIn = async (req, res) => {
         checkInTime: new Date(),
         checkInImage: result.secure_url,
         status: "present",
-        submittedByRole: "employee", // ✅ ADDED: Save the submitter's role
       });
     } else {
       attendance.checkInTime = new Date();
       attendance.checkInImage = result.secure_url;
       attendance.status = "present";
-      attendance.submittedByRole = "employee"; // ✅ ADDED: Update the submitter's role
     }
 
     await attendance.save();
@@ -328,7 +326,6 @@ exports.employeeCheckIn = async (req, res) => {
         employeeName: attendance.employeeName,
         checkInTime: attendance.checkInTime,
         status: attendance.status,
-        submittedByRole: attendance.submittedByRole, // ✅ ADDED: Return the role in response
       },
     });
   } catch (err) {
@@ -450,7 +447,6 @@ exports.employeeCheckOut = async (req, res) => {
     attendance.checkOutTime = new Date();
     attendance.checkOutImage = result.secure_url;
     attendance.updatedAt = new Date();
-    attendance.submittedByRole = "employee"; // ✅ ADDED: Ensure role is set for check-out too
 
     await attendance.save();
 
@@ -462,7 +458,6 @@ exports.employeeCheckOut = async (req, res) => {
         checkInTime: attendance.checkInTime,
         checkOutTime: attendance.checkOutTime,
         status: attendance.status,
-        submittedByRole: attendance.submittedByRole, // ✅ ADDED: Return the role in response
       },
     });
   } catch (err) {
@@ -642,7 +637,6 @@ exports.approveDeclineManualRequest = async (req, res) => {
           date: today,
           status: "present",
           isManualRequest: true,
-          submittedByRole: "employee", // ✅ ADDED: Set role for manual requests
           manualRequestData: {
             requestType: request.requestType,
             requestedTime: request.requestedTime,
@@ -653,7 +647,6 @@ exports.approveDeclineManualRequest = async (req, res) => {
         });
       } else {
         attendance.isManualRequest = true;
-        attendance.submittedByRole = "employee"; // ✅ ADDED: Set role for manual requests
         attendance.manualRequestData = {
           requestType: request.requestType,
           requestedTime: request.requestedTime,
@@ -695,7 +688,7 @@ exports.approveDeclineManualRequest = async (req, res) => {
 // Get All Attendance Records
 exports.getAllAttendanceRecords = async (req, res) => {
   try {
-    const { date, employeeId, status, page = 1, limit = 10 } = req.query;
+    const { date, employeeId, status } = req.query;
 
     let filter = {};
 
@@ -716,60 +709,11 @@ exports.getAllAttendanceRecords = async (req, res) => {
       filter.status = status;
     }
 
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const attendanceRecords = await Attendance.find(filter)
       .populate("employeeId", "name employeeId role") // Include role in population
-      .sort({ date: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      .sort({ date: -1, createdAt: -1 });
 
-    // Also get admin attendance records
-    const adminAttendanceRecords = await AdminAttendance.find(filter)
-      .sort({ date: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    // Get total counts for pagination
-    const totalAttendanceRecords = await Attendance.countDocuments(filter);
-    const totalAdminRecords = await AdminAttendance.countDocuments(filter);
-    const totalRecords = totalAttendanceRecords + totalAdminRecords;
-
-    // Combine and format both types of attendance records
-    const combinedRecords = [
-      ...attendanceRecords.map((record) => ({
-        ...record.toObject(),
-        // Use submittedByRole for employee records, fallback to employee role if not set
-        role:
-          record.submittedByRole ||
-          (record.employeeId && record.employeeId.role) ||
-          "employee",
-      })),
-      ...adminAttendanceRecords.map((record) => ({
-        ...record.toObject(),
-        // Use role field for admin records
-        role: record.role || "admin",
-      })),
-    ];
-
-    // Sort combined records by date
-    combinedRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    res.status(200).json({
-      success: true,
-      message: "Attendance records retrieved successfully",
-      data: {
-        records: combinedRecords,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalRecords / parseInt(limit)),
-          totalRecords,
-          hasNext: skip + combinedRecords.length < totalRecords,
-          hasPrev: parseInt(page) > 1,
-        },
-      },
-    });
+    res.status(200).json(attendanceRecords);
   } catch (err) {
     console.error("Get All Attendance Records Error:", err);
     res.status(500).json({
@@ -819,7 +763,6 @@ exports.markAbsentEmployees = async (req, res) => {
             employeeName: employee.name,
             date: today,
             status: "absent",
-            submittedByRole: "system", // ✅ ADDED: Mark as system-generated
           });
           await attendance.save();
         }
@@ -852,8 +795,7 @@ exports.adminAttendanceCustom = async (req, res) => {
 
     if (!employId || !employeName || !slectType || !date) {
       return res.status(400).json({
-        message:
-          "All fields are required: employId, employeName, slectType, date",
+        message: "All fields are required: employId, employeName, slectType, date",
       });
     }
 
@@ -909,7 +851,6 @@ exports.adminAttendanceCustom = async (req, res) => {
         date: attendanceDate,
         status: "present",
         attendanceType: slectType,
-        role: "admin", // ✅ ADDED: Save the role for admin attendance
       });
     }
 
@@ -924,9 +865,7 @@ exports.adminAttendanceCustom = async (req, res) => {
     await attendance.save();
 
     res.status(200).json({
-      message: `${
-        slectType === "checkin" ? "Check-in" : "Check-out"
-      } successful`,
+      message: `${slectType === "checkin" ? "Check-in" : "Check-out"} successful`,
       attendance: {
         id: attendance._id,
         adminName: attendance.adminName,
@@ -936,7 +875,6 @@ exports.adminAttendanceCustom = async (req, res) => {
         status: attendance.status,
         attendanceType: slectType,
         date: attendance.date,
-        role: attendance.role, // ✅ ADDED: Return the role in response
       },
     });
   } catch (err) {

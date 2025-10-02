@@ -98,7 +98,6 @@ exports.addAdminAdvanceSalary = async (req, res) => {
       image: result.secure_url,
       submittedBy: req.user.adminId || req.user._id, // Admin is submitting
       submittedByName: req.user.name || "Admin", // Admin name
-      submittedByRole: req.user.role || "admin", // ← FIXED: Add role field
       status: "approved", // Admin advance salary is auto-approved
       adminNotes: "Direct admin advance salary",
     });
