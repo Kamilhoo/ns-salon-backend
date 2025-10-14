@@ -14,8 +14,16 @@ exports.getNotifications = async (req, res) => {
       _id: req.user._id,
     });
 
-    const userId = req.user.adminId || req.user.managerId || req.user._id;
+    let userId = req.user.adminId || req.user.managerId || req.user._id;
     const userRole = req.user.role;
+
+    // Safe fallback for face-auth admins missing adminId
+    if (!userId && userRole === "admin" && req.user._id) {
+      console.log(
+        "🔧 [Notifications] Fallback: using _id as adminId for face-auth admin"
+      );
+      userId = req.user._id;
+    }
 
     console.log("🔔 [Notifications] Final user ID:", userId);
     console.log("🔔 [Notifications] User role:", userRole);
@@ -78,7 +86,10 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
-    const userId = req.user.adminId || req.user.managerId || req.user._id;
+    let userId = req.user.adminId || req.user.managerId || req.user._id;
+    if (!userId && req.user.role === "admin" && req.user._id) {
+      userId = req.user._id;
+    }
 
     const notification = await Notification.findOne({
       _id: notificationId,
@@ -113,7 +124,10 @@ exports.markAsRead = async (req, res) => {
 // Mark all notifications as read
 exports.markAllAsRead = async (req, res) => {
   try {
-    const userId = req.user.adminId || req.user.managerId || req.user._id;
+    let userId = req.user.adminId || req.user.managerId || req.user._id;
+    if (!userId && req.user.role === "admin" && req.user._id) {
+      userId = req.user._id;
+    }
 
     await Notification.updateMany(
       {
@@ -144,7 +158,10 @@ exports.markAllAsRead = async (req, res) => {
 exports.deleteNotification = async (req, res) => {
   try {
     const { notificationId } = req.params;
-    const userId = req.user.adminId || req.user.managerId || req.user._id;
+    let userId = req.user.adminId || req.user.managerId || req.user._id;
+    if (!userId && req.user.role === "admin" && req.user._id) {
+      userId = req.user._id;
+    }
 
     const notification = await Notification.findOne({
       _id: notificationId,
@@ -178,7 +195,10 @@ exports.deleteNotification = async (req, res) => {
 // Get notification count (for navbar badge)
 exports.getNotificationCount = async (req, res) => {
   try {
-    const userId = req.user.adminId || req.user.managerId || req.user._id;
+    let userId = req.user.adminId || req.user.managerId || req.user._id;
+    if (!userId && req.user.role === "admin" && req.user._id) {
+      userId = req.user._id;
+    }
 
     const unreadCount = await Notification.countDocuments({
       recipientId: userId,
