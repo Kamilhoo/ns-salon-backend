@@ -6,6 +6,7 @@ const path = require("path");
 const Expense = require("../models/Expense");
 const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
+const { notifyAllAdmins } = require("./notificationController");
 
 // Cloudinary configuration
 cloudinary.config({
@@ -89,24 +90,17 @@ exports.addExpense = async (req, res) => {
     });
     await expense.save();
 
-    // Create notification for admin if it's a manager expense
+    // Create notification for ALL admins if it's a manager expense
     if (req.body.userRole === "manager") {
       try {
-        const admins = await Admin.find({ isActive: { $ne: false } });
-        for (const admin of admins) {
-          const notification = new Notification({
-            title: "Expense Request",
-            message: `New expense request submitted: ${req.body.description} - Amount: $${req.body.amount}`,
-            type: "expense_request",
-            recipientType: "admin",
-            recipientId: admin._id,
-            recipientModel: "Admin",
-            relatedEntityType: "expense",
-            relatedEntityId: expense._id,
-            priority: "medium",
-          });
-          await notification.save();
-        }
+        await notifyAllAdmins({
+          title: "Expense Request",
+          message: `New expense request submitted: ${req.body.description} - Amount: $${req.body.amount}`,
+          type: "expense_request",
+          priority: "medium",
+          relatedEntityType: "expense",
+          relatedEntityId: expense._id,
+        });
       } catch (notificationError) {
         console.error(
           "Error creating expense notification:",

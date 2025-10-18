@@ -19,6 +19,7 @@ const notificationSchema = new mongoose.Schema({
       "attendance_request", // Manager attendance request
       "expense_request", // Manager expense request
       "advance_salary_request", // Manager advance salary request
+      "bill_generated", // Bill generated for client
       "system_alert", // System notifications
       "general" // General notifications
     ],
@@ -37,7 +38,7 @@ const notificationSchema = new mongoose.Schema({
   },
   recipientModel: {
     type: String,
-    enum: ["Admin", "Manager", "User"],
+    enum: ["Admin", "Manager", "User", "Employee"],
     required: true
   },
   

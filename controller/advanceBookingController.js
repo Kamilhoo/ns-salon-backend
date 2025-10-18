@@ -5,6 +5,7 @@ const Admin = require("../models/Admin");
 const Manager = require("../models/Manager");
 const cloudinary = require("cloudinary").v2;
 const moment = require("moment-timezone");
+const { notifyAllAdmins } = require("./notificationController");
 
 // Helper function for proper reminder calculation
 const calculateReminderDateTime = (bookingDate, bookingTime) => {
@@ -51,24 +52,18 @@ const createAdvanceBookingReminder = async (booking) => {
   try {
     const reminderDate = new Date(booking.reminderDate);
 
-    const admins = await Admin.find({ isActive: { $ne: false } });
     const managers = await Manager.find({ isActive: { $ne: false } });
 
-    for (const admin of admins) {
-      const notification = new Notification({
-        title: "Advance Booking Reminder",
-        message: `Reminder: Call client ${booking.clientName} (${booking.phoneNumber}) for tomorrow's booking at ${booking.time}`,
-        type: "advance_booking_reminder",
-        recipientType: "admin",
-        recipientId: admin._id,
-        recipientModel: "Admin",
-        relatedEntityType: "advance_booking",
-        relatedEntityId: booking._id,
-        scheduledFor: reminderDate,
-        priority: "high",
-      });
-      await notification.save();
-    }
+    // Notify ALL admins (credential + face-auth)
+    await notifyAllAdmins({
+      title: "Advance Booking Reminder",
+      message: `Reminder: Call client ${booking.clientName} (${booking.phoneNumber}) for tomorrow's booking at ${booking.time}`,
+      type: "advance_booking_reminder",
+      priority: "high",
+      relatedEntityType: "advance_booking",
+      relatedEntityId: booking._id,
+      scheduledFor: reminderDate,
+    });
 
     for (const manager of managers) {
       const notification = new Notification({

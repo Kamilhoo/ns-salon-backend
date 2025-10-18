@@ -1,5 +1,6 @@
 require("dotenv").config();
 const Client = require("../models/Client");
+const { notifyAllAdmins, notifyAllManagers } = require("./notificationController");
 
 // Add new client
 exports.addClient = async (req, res) => {
@@ -406,8 +407,8 @@ exports.getClientHistory = async (req, res) => {
             gstPercentage: 0,
             finalAmount: visit.finalAmount,
             totalAmount: visit.totalAmount,
-            notes: "",
-            specialist: "",
+            notes: visit.notes || "",
+            specialist: visit.specialist || "",
             paymentStatus: visit.paymentStatus,
           };
         } catch (error) {
@@ -484,19 +485,41 @@ exports.addVisitToClient = async (req, res) => {
     // Generate visit ID
     const visitId = `VISIT${Date.now()}`;
 
-    // Create new visit
+    // Normalize incoming totals and fields (frontend may send totalBill/gst)
+    const resolvedTotalAmount =
+      visitData.totalAmount != null
+        ? visitData.totalAmount
+        : visitData.totalBill != null
+        ? visitData.totalBill
+        : visitData.totalPrice != null
+        ? visitData.totalPrice
+        : 0;
+
+    const resolvedGstAmount =
+      visitData.gstAmount != null
+        ? visitData.gstAmount
+        : visitData.gst != null
+        ? visitData.gst
+        : undefined;
+
+    // Create new visit including notes and specialist
     const newVisit = {
       visitId,
       date: new Date(),
       services: visitData.services || [],
-      totalAmount: visitData.totalAmount || 0,
+      totalAmount: resolvedTotalAmount,
       billNumber: visitData.billNumber || `BILL${Date.now()}`,
       billId: visitData.billId || undefined,
       subtotal: visitData.subtotal || undefined,
       discount: visitData.discount || undefined,
-      gstAmount: visitData.gstAmount || undefined,
-      finalAmount: visitData.finalAmount || visitData.totalAmount || 0,
+      gstAmount: resolvedGstAmount,
+      finalAmount:
+        visitData.finalAmount != null
+          ? visitData.finalAmount
+          : resolvedTotalAmount,
       paymentStatus: visitData.paymentStatus || "pending",
+      notes: visitData.notes || "",
+      specialist: visitData.specialist || "",
     };
 
     // Add visit to client
@@ -506,6 +529,37 @@ exports.addVisitToClient = async (req, res) => {
     client.lastVisit = new Date();
 
     await client.save();
+
+    // 🔔 Fire notifications for bill generation
+    try {
+      const title = "Bill Generated";
+      const safeName = client.name || visitData.clientName || "Client";
+      const safePhone = client.phoneNumber || visitData.phoneNumber || "N/A";
+      const total = Number(newVisit.totalAmount || 0).toFixed(2);
+      const message = `Bill ${newVisit.billNumber} generated for ${safeName} (${safePhone}) - PKR ${total}`;
+
+      // Send to both roles; ignore individual failures
+      await Promise.all([
+        notifyAllAdmins({
+          title,
+          message,
+          type: "bill_generated",
+          priority: "medium",
+          relatedId: client._id,
+          relatedModel: "Client",
+        }).catch(() => {}),
+        notifyAllManagers({
+          title,
+          message,
+          type: "bill_generated",
+          priority: "medium",
+          relatedId: client._id,
+          relatedModel: "Client",
+        }).catch(() => {}),
+      ]);
+    } catch (notifyErr) {
+      console.error("⚠️ Error sending bill notifications:", notifyErr?.message || notifyErr);
+    }
 
     res.status(200).json({
       success: true,

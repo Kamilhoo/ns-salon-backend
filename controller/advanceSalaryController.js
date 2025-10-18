@@ -5,8 +5,10 @@ const fs = require("fs");
 const path = require("path");
 const AdvanceSalary = require("../models/AdvanceSalary");
 const Employee = require("../models/Employee");
-const Admin = require("../models/Admin"); // Added Admin model import
+const Admin = require("../models/Admin"); // Admin model (for notifications)
+const Manager = require("../models/Manager"); // Manager model for manager lookup
 const Notification = require("../models/Notification");
+const { notifyAllAdmins } = require("./notificationController");
 
 // Cloudinary configuration
 cloudinary.config({
@@ -199,12 +201,14 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
     let employee = await Employee.findOne({ employeeId: employeeId });
     let isManager = false;
 
-    // If not found in Employee collection, check Admin collection for managers
+    // If not found in Employee collection, check Manager collection for managers
     if (!employee) {
-      const manager = await Admin.findOne({
-        adminId: employeeId,
-        role: "manager",
-      });
+      // First try dedicated Manager model (preferred)
+      let manager = await Manager.findOne({ managerId: employeeId });
+      // Fallback: some setups might store managers in Admin collection
+      if (!manager) {
+        manager = await Admin.findOne({ adminId: employeeId, role: "manager" });
+      }
       if (manager) {
         employee = manager;
         isManager = true;
@@ -268,29 +272,22 @@ exports.addAdvanceSalaryRequest = async (req, res) => {
       employeeLivePicture: employee.livePicture, // Use stored employee picture
       amount: parseFloat(amount),
       image: imageResult.secure_url,
-      submittedBy: req.user.managerId || req.user.adminId, // From JWT token
-      submittedByName: req.user.name || req.user.email,
+      submittedBy: (req.user && req.user._id) ? req.user._id : undefined,
+      submittedByName: (req.user && (req.user.name || req.user.email)) || req.body.employeeName,
     });
 
     await advanceSalary.save();
 
-    // Create notification for admin
+    // Create notification for ALL admins (credential + face-auth)
     try {
-      const admins = await Admin.find({ isActive: { $ne: false } });
-      for (const admin of admins) {
-        const notification = new Notification({
-          title: "Advance Salary Request",
-          message: `New advance salary request from ${req.body.employeeName} (${req.body.employeeId}) - Amount: Pkr ${req.body.amount}`,
-          type: "advance_salary_request",
-          recipientType: "admin",
-          recipientId: admin._id,
-          recipientModel: "Admin",
-          relatedEntityType: "advance_salary",
-          relatedEntityId: advanceSalary._id,
-          priority: "high",
-        });
-        await notification.save();
-      }
+      await notifyAllAdmins({
+        title: "Advance Salary Request",
+        message: `New advance salary request from ${req.body.employeeName} (${req.body.employeeId}) - Amount: Pkr ${req.body.amount}`,
+        type: "advance_salary_request",
+        priority: "high",
+        relatedEntityType: "advance_salary",
+        relatedEntityId: advanceSalary._id,
+      });
     } catch (notificationError) {
       console.error(
         "Error creating advance salary notification:",

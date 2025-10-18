@@ -165,7 +165,7 @@ const validateImageForFaceRecognition = (imagePath) => {
     const fileSizeInMB = stats.size / (1024 * 1024);
 
     // Check file size (should be between 10KB and 5MB)
-    if (fileSizeInMB < 0.01 || fileSizeInMB > 20) {
+    if (fileSizeInMB < 0.01 || fileSizeInMB > 5) {
       return {
         valid: false,
         message: "Image size should be between 10KB and 5MB",

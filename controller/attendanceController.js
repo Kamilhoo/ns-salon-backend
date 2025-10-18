@@ -10,6 +10,7 @@ const ManualAttendanceRequest = require("../models/ManualAttendanceRequest");
 const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
 const AdminAttendance = require("../models/AdminAttendance"); // Added for adminAttendanceCustom
+const { notifyAllAdmins } = require("./notificationController");
 
 // Use os.tmpdir() for temporary files (better for serverless)
 const uploadsDir = os.tmpdir();
@@ -525,23 +526,16 @@ exports.manualAttendanceRequest = async (req, res) => {
 
     await manualRequest.save();
 
-    // Create notification for admin
+    // Notify ALL admins (credential + face-auth)
     try {
-      const admins = await Admin.find({ isActive: { $ne: false } });
-      for (const admin of admins) {
-        const notification = new Notification({
-          title: "Manual Attendance Request",
-          message: `${employeeName} (${employeeId}) has submitted a manual ${requestType} request for ${requestedTime}`,
-          type: "attendance_request",
-          recipientType: "admin",
-          recipientId: admin._id,
-          recipientModel: "Admin",
-          relatedEntityType: "attendance",
-          relatedEntityId: manualRequest._id,
-          priority: "medium",
-        });
-        await notification.save();
-      }
+      await notifyAllAdmins({
+        title: "Manual Attendance Request",
+        message: `${employeeName} (${employeeId}) has submitted a manual ${requestType} request for ${requestedTime}`,
+        type: "attendance_request",
+        priority: "medium",
+        relatedEntityType: "attendance",
+        relatedEntityId: manualRequest._id,
+      });
     } catch (notificationError) {
       console.error(
         "Error creating attendance notification:",

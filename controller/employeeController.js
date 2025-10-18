@@ -1,9 +1,11 @@
+// controllers/employeeController.js
 require("dotenv").config();
 const Employee = require("../models/Employee");
 const cloudinary = require("../config/cloudinary");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const { notifyAllAdmins } = require("./notificationController");
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, "../uploads");
@@ -28,6 +30,32 @@ const {
   validateImageForFaceRecognition,
   cleanupTempImage,
 } = require("../utils/imageUtils");
+
+// Helper: Generate next employeeId by role (ADM/MGR/EMP) robustly
+async function generateNextEmployeeId(role) {
+  const prefixMap = { admin: "ADM", manager: "MGR", employee: "EMP" };
+  const prefix = prefixMap[role] || "EMP";
+
+  // Fetch existing IDs for the role that match PREFIX + digits
+  const docs = await Employee.find({
+    role,
+    employeeId: { $regex: `^${prefix}\\d+$` },
+  })
+    .select("employeeId")
+    .lean();
+
+  let maxNum = 0;
+  for (const d of docs) {
+    const m = /^(?:ADM|MGR|EMP)(\d+)$/.exec(d.employeeId || "");
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!Number.isNaN(n) && n > maxNum) maxNum = n;
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  return `${prefix}${nextNum.toString().padStart(3, "0")}`;
+}
 
 const handleFileUpload = (req, res, next) => {
   upload(req, res, (err) => {
@@ -161,36 +189,8 @@ exports.addEmployee = async (req, res) => {
       });
     }
 
-    // Generate proper employee ID based on role
-    let employeeId;
-    if (role === "admin") {
-      // Get the next admin number
-      const lastAdmin = await Employee.findOne({ role: "admin" }).sort({
-        employeeId: -1,
-      });
-      const adminNumber = lastAdmin
-        ? parseInt(lastAdmin.employeeId.replace("ADM", "")) + 1
-        : 1;
-      employeeId = `ADM${adminNumber.toString().padStart(3, "0")}`;
-    } else if (role === "manager") {
-      // Get the next manager number
-      const lastManager = await Employee.findOne({ role: "manager" }).sort({
-        employeeId: -1,
-      });
-      const mgrNumber = lastManager
-        ? parseInt(lastManager.employeeId.replace("MGR", "")) + 1
-        : 1;
-      employeeId = `MGR${mgrNumber.toString().padStart(3, "0")}`;
-    } else {
-      // Get the next employee number
-      const lastEmployee = await Employee.findOne({
-        role: "employee",
-      }).sort({ employeeId: -1 });
-      const empNumber = lastEmployee
-        ? parseInt(lastEmployee.employeeId.replace("EMP", "")) + 1
-        : 1;
-      employeeId = `EMP${empNumber.toString().padStart(3, "0")}`;
-    }
+    // Generate proper employee ID based on role (robust against malformed IDs)
+    const employeeId = await generateNextEmployeeId(role || "employee");
 
     const employee = new Employee({
       employeeId,
@@ -204,27 +204,28 @@ exports.addEmployee = async (req, res) => {
 
     await employee.save();
 
-    // Notify all admins about new employee addition
+    // ========== ✅ UPDATED NOTIFICATION SECTION (Replace line 171-189) ==========
+    // Notify all admins (both credential and face auth) about new employee
     try {
-      const Admin = require("../models/Admin");
-      const Notification = require("../models/Notification");
-      const admins = await Admin.find({});
-      for (const admin of admins) {
-        const notification = new Notification({
-          title: "New Employee Added",
-          message: `Employee ${name} (ID: ${employeeId}) has been added to the system.`,
-          type: "general",
-          recipientType: "admin",
-          recipientId: admin._id,
-          recipientModel: "Admin",
-          relatedEntityType: "none",
-          priority: "medium",
-        });
-        await notification.save();
-      }
+      await notifyAllAdmins({
+        title: "New Employee Added",
+        message: `Employee ${name} (ID: ${employeeId}) has been added to the system.`,
+        type: "info",
+        priority: "medium",
+        relatedId: employee._id,
+        relatedModel: "Employee",
+      });
+      console.log(
+        "✅ [addEmployee] Notifications sent to all admins successfully"
+      );
     } catch (notificationError) {
-      console.error("Error creating employee addition notification:", notificationError);
+      console.error(
+        "❌ [addEmployee] Error creating notification:",
+        notificationError
+      );
+      // Don't fail employee creation if notification fails
     }
+    // ========== END NOTIFICATION SECTION ==========
 
     const roleText =
       role === "admin" ? "Admin" : role === "manager" ? "Manager" : "Employee";
@@ -255,7 +256,9 @@ exports.getAllEmployees = async (req, res) => {
 
     const employees = await Employee.find(filter)
       .sort({ createdAt: -1 })
-      .select("employeeId name phoneNumber role createdAt livePicture idCardNumber monthlySalary");
+      .select(
+        "employeeId name phoneNumber role createdAt livePicture idCardNumber monthlySalary"
+      );
 
     if (!employees || employees.length === 0) {
       return res.status(200).json({
