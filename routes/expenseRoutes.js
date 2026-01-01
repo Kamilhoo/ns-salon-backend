@@ -8,6 +8,7 @@ const {
   approveDeclineExpense,
   getExpenseById,
   getExpenseStats,
+  deleteExpense,
   handleFileUpload,
 } = require("../controller/expenseController");
 const { authenticate } = require("../middleware/authMiddleware");
@@ -26,6 +27,9 @@ router.get("/manager/pending", authenticate, getManagerPendingExpenses);
 
 // Approve/Decline Expense (Admin) - Protected route
 router.put("/:expenseId", authenticate, approveDeclineExpense);
+
+// Delete Expense by ID (Admin) - Protected route
+router.delete("/:expenseId", authenticate, deleteExpense);
 
 // Get Expense by ID - Protected route
 router.get("/:expenseId", authenticate, getExpenseById);

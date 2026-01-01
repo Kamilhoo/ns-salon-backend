@@ -8,6 +8,7 @@ const {
   approveDeclineManualRequest,
   getAllAttendanceRecords,
   markAbsentEmployees,
+  adminRecordEmployeeAttendance,
   handleFileUpload,
 } = require("../controller/attendanceController");
 
@@ -35,6 +36,13 @@ router.put(
 
 // Get All Attendance Records (with filters) - requires authentication
 router.get("/all", authenticateToken, getAllAttendanceRecords);
+
+// Admin manual attendance for any employee/manager - requires authentication
+router.post(
+  "/admin/manual",
+  authenticateToken,
+  adminRecordEmployeeAttendance
+);
 
 // Mark Absent Employees (Admin - Daily Task) - requires authentication
 router.post("/mark-absent", authenticateToken, markAbsentEmployees);

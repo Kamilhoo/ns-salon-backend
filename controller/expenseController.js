@@ -280,4 +280,31 @@ exports.getExpenseStats = async (req, res) => {
   }
 };
 
+// Delete Expense by ID
+exports.deleteExpense = async (req, res) => {
+  try {
+    const { expenseId } = req.params;
+
+    const deleted = await Expense.findByIdAndDelete(expenseId);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Expense not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Expense deleted successfully",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Error deleting expense",
+      error: err.message,
+    });
+  }
+};
+
 exports.handleFileUpload = handleFileUpload;

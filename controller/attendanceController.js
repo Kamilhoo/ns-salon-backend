@@ -349,6 +349,103 @@ exports.employeeCheckIn = async (req, res) => {
   }
 };
 
+// Admin manual attendance recording for any employee/manager
+exports.adminRecordEmployeeAttendance = async (req, res) => {
+  try {
+    const { employeeId, employeeName, type, date } = req.body;
+
+    if (!employeeId || !employeeName || !type || !date) {
+      return res.status(400).json({
+        message:
+          "All fields are required: employeeId, employeeName, type, date",
+      });
+    }
+
+    if (!["checkin", "checkout"].includes(type)) {
+      return res.status(400).json({
+        message: "type must be either checkin or checkout",
+      });
+    }
+
+    // Find employee (manager/employee/admin) by their string employeeId
+    const employee = await Employee.findOne({ employeeId });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    // Normalize date to start of the day for attendance record
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    let attendance = await Attendance.findOne({
+      employeeId: employee._id,
+      date: {
+        $gte: attendanceDate,
+        $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (type === "checkin") {
+      if (attendance && attendance.checkInTime) {
+        return res.status(400).json({
+          message: "Check-in already recorded for this date",
+        });
+      }
+    } else if (type === "checkout") {
+      if (!attendance || !attendance.checkInTime) {
+        return res.status(400).json({
+          message: "No check-in record found for this date",
+        });
+      }
+      if (attendance.checkOutTime) {
+        return res.status(400).json({
+          message: "Check-out already recorded for this date",
+        });
+      }
+    }
+
+    // Create attendance record if it does not exist yet
+    if (!attendance) {
+      attendance = new Attendance({
+        employeeId: employee._id,
+        employeeName,
+        date: attendanceDate,
+        status: "present",
+      });
+    }
+
+    // Apply check-in / check-out
+    if (type === "checkin") {
+      attendance.checkInTime = new Date();
+      attendance.status = "present";
+    } else if (type === "checkout") {
+      attendance.checkOutTime = new Date();
+    }
+
+    attendance.updatedAt = new Date();
+    await attendance.save();
+
+    res.status(200).json({
+      message: `${type === "checkin" ? "Check-in" : "Check-out"} recorded successfully`,
+      attendance: {
+        id: attendance._id,
+        employeeName: attendance.employeeName,
+        employeeId: employee.employeeId,
+        checkInTime: attendance.checkInTime,
+        checkOutTime: attendance.checkOutTime,
+        status: attendance.status,
+        date: attendance.date,
+      },
+    });
+  } catch (err) {
+    console.error("Admin manual attendance error:", err);
+    res.status(500).json({
+      message: "Error recording manual attendance",
+      error: err.message,
+    });
+  }
+};
+
 // Employee Check-Out
 exports.employeeCheckOut = async (req, res) => {
   try {

@@ -4,6 +4,7 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const AdvanceSalary = require("../models/AdvanceSalary");
+const Employee = require("../models/Employee");
 
 // Cloudinary configuration
 cloudinary.config({
@@ -54,20 +55,20 @@ const handleFileUpload = (req, res, next) => {
   });
 };
 
-// Add Advance Salary (Only amount and image)
+// Add Advance Salary (Admin can record for any employee/manager)
 exports.addAdminAdvanceSalary = async (req, res) => {
   try {
-    const { amount } = req.body || {};
-
-    // Debug: Log the user object to see what fields are available
-    console.log("🔍 Debug - req.user:", req.user);
-    console.log("🔍 Debug - req.user.adminId:", req.user?.adminId);
-    console.log("🔍 Debug - req.user.name:", req.user?.name);
-    console.log("🔍 Debug - req.user._id:", req.user?._id);
+    const { amount, employeeId } = req.body || {};
 
     if (amount === undefined || amount === null || amount === "") {
       return res.status(400).json({
         message: "Amount is required",
+      });
+    }
+
+    if (!employeeId || typeof employeeId !== "string") {
+      return res.status(400).json({
+        message: "Employee ID is required",
       });
     }
 
@@ -86,20 +87,28 @@ exports.addAdminAdvanceSalary = async (req, res) => {
     // Delete local file
     fs.unlinkSync(req.file.path);
 
+    // Resolve target employee (manager/employee/admin) by their string employeeId
+    const targetEmployee = await Employee.findOne({ employeeId: employeeId });
+
+    if (!targetEmployee) {
+      return res.status(404).json({
+        message: "Employee not found for provided employeeId",
+      });
+    }
+
     // Create advance salary with all required fields
-    // Use the correct field names from the token
     const advanceSalary = new AdvanceSalary({
-      employeeId: req.user.adminId || req.user._id, // Use adminId from token
-      employeeName: req.user.name || "Admin", // Use name from token
+      employeeId: targetEmployee._id,
+      employeeName: targetEmployee.name,
       employeeLivePicture:
-        req.user.profilePicture ||
-        "https://via.placeholder.com/300x300?text=Admin", // Default admin picture
+        targetEmployee.livePicture ||
+        "https://via.placeholder.com/300x300?text=Employee",
       amount: parseFloat(amount),
       image: result.secure_url,
-      submittedBy: req.user.adminId || req.user._id, // Admin is submitting
+      submittedBy: req.user._id, // Admin is submitting
       submittedByName: req.user.name || "Admin", // Admin name
-      status: "approved", // Admin advance salary is auto-approved
-      adminNotes: "Direct admin advance salary",
+      status: "approved", // Admin-recorded advance salary is auto-approved
+      adminNotes: "Direct admin-recorded advance salary",
     });
 
     await advanceSalary.save();

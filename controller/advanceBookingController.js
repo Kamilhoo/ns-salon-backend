@@ -274,6 +274,26 @@ const updateBookingStatus = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking not found" });
 
+    // If booking is cancelled, deactivate any scheduled reminder notifications
+    if (status === "cancelled") {
+      try {
+        await Notification.updateMany(
+          {
+            type: "advance_booking_reminder",
+            relatedEntityType: "advance_booking",
+            relatedEntityId: bookingId,
+            isActive: true,
+          },
+          { $set: { isActive: false } }
+        );
+      } catch (notifError) {
+        console.error(
+          "❌ Error deactivating reminder notifications for cancelled booking:",
+          notifError
+        );
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: `Booking status updated to ${status}`,
@@ -344,6 +364,24 @@ const deleteBooking = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Booking not found" });
+
+    // When a booking is deleted, also deactivate any scheduled reminders for it
+    try {
+      await Notification.updateMany(
+        {
+          type: "advance_booking_reminder",
+          relatedEntityType: "advance_booking",
+          relatedEntityId: bookingId,
+          isActive: true,
+        },
+        { $set: { isActive: false } }
+      );
+    } catch (notifError) {
+      console.error(
+        "❌ Error deactivating reminder notifications for deleted booking:",
+        notifError
+      );
+    }
 
     res.status(200).json({
       success: true,
