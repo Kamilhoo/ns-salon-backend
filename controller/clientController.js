@@ -21,29 +21,12 @@ exports.addClient = async (req, res) => {
     });
 
     if (existingClient) {
-      // Add a new visit to existing client
-      const visitId = `VISIT${Date.now()}`;
-      const newVisit = {
-        visitId,
-        date: new Date(),
-        services: [{ name: "Initial Visit", price: 0 }],
-        totalAmount: 0,
-        billNumber: `BILL${Date.now()}`,
-        paymentStatus: "pending",
-      };
-
-      // Add visit to existing client
-      existingClient.visits.push(newVisit);
-      existingClient.totalVisits += 1;
-      existingClient.totalSpent += newVisit.totalAmount;
-      existingClient.lastVisit = new Date();
-
-      await existingClient.save();
-
+      // Do NOT auto-create visits/bills when adding a client directly.
+      // Just return the existing client so the UI can show its info.
       return res.status(200).json({
         success: true,
         message:
-          "Client with this phone number already exists. Visit added to existing client.",
+          "Client with this phone number already exists.",
         existingClient: {
           _id: existingClient._id,
           clientId: existingClient.clientId,
@@ -53,7 +36,6 @@ exports.addClient = async (req, res) => {
           totalSpent: existingClient.totalSpent,
           lastVisit: existingClient.lastVisit,
         },
-        newVisit: newVisit,
       });
     }
 
@@ -64,32 +46,22 @@ exports.addClient = async (req, res) => {
       : 1;
     const clientId = `CLT${clientNumber.toString().padStart(3, "0")}`;
 
-    // Create new client with initial visit
-    const visitId = `VISIT${Date.now()}`;
-    const initialVisit = {
-      visitId,
-      date: new Date(),
-      services: [{ name: "Initial Visit", price: 0 }],
-      totalAmount: 0,
-      billNumber: `BILL${Date.now()}`,
-      paymentStatus: "pending",
-    };
-
+    // Create new client WITHOUT any initial visit or bill.
     const client = new Client({
       clientId,
       name,
       phoneNumber: normalizedPhone,
-      totalVisits: 1,
+      totalVisits: 0,
       totalSpent: 0,
-      lastVisit: new Date(),
-      visits: [initialVisit],
+      lastVisit: null,
+      visits: [],
     });
 
     await client.save();
 
     res.status(201).json({
       success: true,
-      message: "Client added successfully with initial visit!",
+      message: "Client added successfully!",
       client: {
         _id: client._id,
         clientId: client.clientId,
@@ -99,7 +71,6 @@ exports.addClient = async (req, res) => {
         totalSpent: client.totalSpent,
         lastVisit: client.lastVisit,
       },
-      initialVisit: initialVisit,
     });
   } catch (err) {
     res.status(500).json({

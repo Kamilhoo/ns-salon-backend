@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { addDeal, editDeal, deleteDeal, getAllDeals, handleFileUpload } = require('../controller/dealController');
+const {
+  addDeal,
+  editDeal,
+  deleteDeal,
+  getAllDeals,
+  handleFileUpload,
+  changeDealStatus,
+} = require('../controller/dealController');
 
 // Add deal
 router.post('/add', handleFileUpload, addDeal);
@@ -8,6 +15,8 @@ router.post('/add', handleFileUpload, addDeal);
 router.put('/:id', handleFileUpload, editDeal);
 // Delete deal
 router.delete('/:id', deleteDeal);
+// Change deal visibility (show/hide)
+router.put('/:id/status', changeDealStatus);
 // Get all deals
 router.get('/all', getAllDeals);
 

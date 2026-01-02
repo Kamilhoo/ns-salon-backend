@@ -10,6 +10,7 @@ const {
   markAbsentEmployees,
   adminRecordEmployeeAttendance,
   handleFileUpload,
+  deleteAttendanceRecord,
 } = require("../controller/attendanceController");
 
 // Import authentication middleware
@@ -46,5 +47,8 @@ router.post(
 
 // Mark Absent Employees (Admin - Daily Task) - requires authentication
 router.post("/mark-absent", authenticateToken, markAbsentEmployees);
+
+// Delete single attendance record by ID - requires authentication
+router.delete("/:id", authenticateToken, deleteAttendanceRecord);
 
 module.exports = router;

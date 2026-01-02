@@ -33,7 +33,8 @@ const handleFileUpload = (req, res, next) => {
 
 exports.addDeal = async (req, res) => {
   try {
-    const { name, price, description } = req.body;
+    const { name, price, description, isHiddenFromEmployee } = req.body;
+
     let imageUrl = '';
     if (req.files && req.files.length > 0) {
       const file = req.files.find(f => f.fieldname === 'image');
@@ -47,7 +48,18 @@ exports.addDeal = async (req, res) => {
         imageUrl = result.secure_url;
       }
     }
-    const deal = new Deal({ name, price, description, image: imageUrl });
+    const deal = new Deal({
+      name,
+      price,
+      description,
+      image: imageUrl,
+      // Accept visibility flag from payload (string or boolean)
+      isHiddenFromEmployee:
+        typeof isHiddenFromEmployee === 'string'
+          ? isHiddenFromEmployee.toLowerCase() === 'true'
+          : !!isHiddenFromEmployee,
+    });
+
     await deal.save();
     res.status(201).json({ message: 'Deal added', deal });
   } catch (err) {
@@ -58,8 +70,19 @@ exports.addDeal = async (req, res) => {
 exports.editDeal = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, description } = req.body;
-    let update = { name, price, description };
+    const { name, price, description, isHiddenFromEmployee } = req.body;
+    const update = {};
+
+    if (name !== undefined) update.name = name;
+    if (price !== undefined) update.price = price;
+    if (description !== undefined) update.description = description;
+    if (isHiddenFromEmployee !== undefined) {
+      update.isHiddenFromEmployee =
+        typeof isHiddenFromEmployee === 'string'
+          ? isHiddenFromEmployee.toLowerCase() === 'true'
+          : !!isHiddenFromEmployee;
+    }
+
     if (req.files && req.files.length > 0) {
       const file = req.files.find(f => f.fieldname === 'image');
       if (file) {
@@ -93,10 +116,51 @@ exports.deleteDeal = async (req, res) => {
 
 exports.getAllDeals = async (req, res) => {
   try {
-    const deals = await Deal.find({}, 'name price description image');
+    // Include visibility flag in list output
+    const deals = await Deal.find(
+      {},
+      'name price description image isHiddenFromEmployee',
+    );
     res.json(deals);
   } catch (err) {
     res.status(500).json({ message: 'Get deals error', error: err.message });
+  }
+};
+
+// Change deal visibility (show/hide) without file upload
+exports.changeDealStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // 'show' | 'hide'
+
+    if (!id) {
+      return res.status(400).json({ message: 'Deal ID is required' });
+    }
+
+    if (!['show', 'hide'].includes((status || '').toLowerCase())) {
+      return res
+        .status(400)
+        .json({ message: 'Status must be either "show" or "hide"' });
+    }
+
+    const isHiddenFromEmployee = status.toLowerCase() === 'hide';
+
+    const deal = await Deal.findByIdAndUpdate(
+      id,
+      { isHiddenFromEmployee },
+      { new: true },
+    );
+
+    if (!deal) {
+      return res.status(404).json({ message: 'Deal not found' });
+    }
+
+    res.json({
+      message: `Deal visibility updated to ${status}`,
+      deal,
+    });
+  } catch (err) {
+    res.status(400).json({ message: 'Change deal status error', error: err.message });
   }
 };
 

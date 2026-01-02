@@ -177,6 +177,41 @@ async function verifyEmployeeFace(storedImageUrl, attendanceImagePath) {
   }
 }
 
+// Delete a single attendance record (employee/manager/admin)
+async function deleteAttendanceRecord(req, res) {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Attendance ID is required" });
+    }
+
+    // Try deleting from primary Attendance collection first
+    const deletedAttendance = await Attendance.findByIdAndDelete(id);
+
+    // Also attempt to delete from AdminAttendance in case the ID belongs there
+    const deletedAdminAttendance = await AdminAttendance.findByIdAndDelete(id);
+
+    if (!deletedAttendance && !deletedAdminAttendance) {
+      return res.status(404).json({ message: "Attendance record not found" });
+    }
+
+    return res.json({
+      message: "Attendance record deleted successfully",
+      deletedFrom: {
+        attendance: !!deletedAttendance,
+        adminAttendance: !!deletedAdminAttendance,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Delete attendance error:", error);
+    return res.status(500).json({
+      message: "Failed to delete attendance record",
+      error: error.message,
+    });
+  }
+}
+
 // Employee Check-In
 exports.employeeCheckIn = async (req, res) => {
   try {
@@ -978,3 +1013,4 @@ exports.adminAttendanceCustom = async (req, res) => {
 };
 
 exports.handleFileUpload = handleFileUpload;
+exports.deleteAttendanceRecord = deleteAttendanceRecord;
