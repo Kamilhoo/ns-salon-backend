@@ -9,6 +9,7 @@ const {
   getAllAdminAdvanceSalary,
   getAdminAdvanceSalaryStats,
   getAdminAdvanceSalaryById,
+  deleteAdminAdvanceSalary,
   handleFileUpload,
 } = require("../controller/adminAdvanceSalaryController");
 
@@ -27,5 +28,8 @@ router.get("/stats", getAdminAdvanceSalaryStats);
 
 // Get Admin Advance Salary by ID
 router.get("/:recordId", getAdminAdvanceSalaryById);
+
+// Delete Admin Advance Salary by ID
+router.delete("/:recordId", deleteAdminAdvanceSalary);
 
 module.exports = router;

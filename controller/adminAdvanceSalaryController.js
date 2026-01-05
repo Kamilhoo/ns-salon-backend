@@ -209,4 +209,33 @@ exports.getAdminAdvanceSalaryById = async (req, res) => {
   }
 };
 
+// Delete Admin Advance Salary Record by ID
+exports.deleteAdminAdvanceSalary = async (req, res) => {
+  try {
+    const { recordId } = req.params;
+
+    if (!recordId) {
+      return res.status(400).json({ message: "Record ID is required" });
+    }
+
+    const deleted = await AdvanceSalary.findByIdAndDelete(recordId);
+
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ message: "Advance salary record not found" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Advance salary record deleted successfully" });
+  } catch (err) {
+    console.error("Delete Admin Advance Salary Error:", err);
+    return res.status(500).json({
+      message: "Error deleting advance salary record",
+      error: err.message,
+    });
+  }
+};
+
 exports.handleFileUpload = handleFileUpload;
