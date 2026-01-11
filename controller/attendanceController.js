@@ -408,22 +408,48 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Normalize date to start of the day for attendance record
-    const attendanceDate = new Date(date);
-    attendanceDate.setHours(0, 0, 0, 0);
+    // Normalize date to start of the day for attendance record (build using local Y/M/D)
+    // Expecting date from frontend as "YYYY-MM-DD" (without timezone) so avoid new Date(string) UTC parsing
+    let attendanceDate;
+    try {
+      const [y, m, d] = String(date).split("-").map(Number);
+      if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+        // Construct local date at midnight
+        attendanceDate = new Date(y, m - 1, d, 0, 0, 0, 0);
+      } else {
+        // Fallback to previous behavior if parsing fails
+        attendanceDate = new Date(date);
+        attendanceDate.setHours(0, 0, 0, 0);
+      }
+    } catch (e) {
+      attendanceDate = new Date(date);
+      attendanceDate.setHours(0, 0, 0, 0);
+    }
 
-    // Build a Date object that combines the selected date with the admin-selected time
+    // Build a Date object that combines the selected date with the admin-selected time in local time
     let selectedDateTime = null;
     if (time) {
       try {
         // Frontend sends time as "HH:mm" (e.g. "16:00" for 4 PM)
         const [hours, minutes] = time.split(":").map(Number);
         if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
-          selectedDateTime = new Date(attendanceDate);
-          selectedDateTime.setHours(hours, minutes, 0, 0);
+          // Use the same Y/M/D as attendanceDate but with provided clock time
+          selectedDateTime = new Date(
+            attendanceDate.getFullYear(),
+            attendanceDate.getMonth(),
+            attendanceDate.getDate(),
+            hours,
+            minutes,
+            0,
+            0
+          );
         }
       } catch (e) {
-        console.warn("⚠️ Failed to parse admin-selected time, falling back to current time", time, e.message);
+        console.warn(
+          "⚠️ Failed to parse admin-selected time, falling back to current time",
+          time,
+          e.message
+        );
       }
     }
 
@@ -487,6 +513,8 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
         checkOutTime: attendance.checkOutTime,
         status: attendance.status,
         date: attendance.date,
+        // Echo back the exact admin-selected clock time string for UI display
+        time: time || null,
       },
     });
   } catch (err) {
