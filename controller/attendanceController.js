@@ -387,7 +387,7 @@ exports.employeeCheckIn = async (req, res) => {
 // Admin manual attendance recording for any employee/manager
 exports.adminRecordEmployeeAttendance = async (req, res) => {
   try {
-    const { employeeId, employeeName, type, date } = req.body;
+    const { employeeId, employeeName, type, date, time } = req.body;
 
     if (!employeeId || !employeeName || !type || !date) {
       return res.status(400).json({
@@ -411,6 +411,21 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
     // Normalize date to start of the day for attendance record
     const attendanceDate = new Date(date);
     attendanceDate.setHours(0, 0, 0, 0);
+
+    // Build a Date object that combines the selected date with the admin-selected time
+    let selectedDateTime = null;
+    if (time) {
+      try {
+        // Frontend sends time as "HH:mm" (e.g. "16:00" for 4 PM)
+        const [hours, minutes] = time.split(":").map(Number);
+        if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+          selectedDateTime = new Date(attendanceDate);
+          selectedDateTime.setHours(hours, minutes, 0, 0);
+        }
+      } catch (e) {
+        console.warn("⚠️ Failed to parse admin-selected time, falling back to current time", time, e.message);
+      }
+    }
 
     let attendance = await Attendance.findOne({
       employeeId: employee._id,
@@ -451,10 +466,12 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
 
     // Apply check-in / check-out
     if (type === "checkin") {
-      attendance.checkInTime = new Date();
+      // Use admin-selected time if provided, otherwise current time
+      attendance.checkInTime = selectedDateTime || new Date();
       attendance.status = "present";
     } else if (type === "checkout") {
-      attendance.checkOutTime = new Date();
+      // Use admin-selected time if provided, otherwise current time
+      attendance.checkOutTime = selectedDateTime || new Date();
     }
 
     attendance.updatedAt = new Date();
