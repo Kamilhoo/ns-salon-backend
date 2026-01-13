@@ -1059,3 +1059,4 @@ exports.adminAttendanceCustom = async (req, res) => {
 
 exports.handleFileUpload = handleFileUpload;
 exports.deleteAttendanceRecord = deleteAttendanceRecord;
+//completed it now 
