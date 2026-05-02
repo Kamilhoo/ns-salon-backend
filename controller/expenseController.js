@@ -6,6 +6,7 @@ const path = require("path");
 const Expense = require("../models/Expense");
 const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
+const BusinessSettings = require("../models/BusinessSettings");
 const { notifyAllAdmins } = require("./notificationController");
 
 // Cloudinary configuration
@@ -80,6 +81,18 @@ exports.addExpense = async (req, res) => {
       imageUrl = result.secure_url;
     }
 
+    // Get Current Business Day
+    let businessDay = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        businessDay = new Date(settings.currentBusinessDay);
+        console.log("📅 [ExpenseController] Using business day from database:", businessDay);
+      }
+    } catch (err) {
+      console.error("❌ [ExpenseController] Error fetching business day for expense:", err);
+    }
+
     const expense = new Expense({
       name,
       price: parseFloat(price),
@@ -87,6 +100,7 @@ exports.addExpense = async (req, res) => {
       image: imageUrl || "https://via.placeholder.com/400x300?text=No+Image", // Default placeholder if no image
       userRole: req.body.userRole || "manager", // Default to manager
       status: req.body.userRole === "admin" ? "approved" : "pending", // Admin expenses are auto-approved, manager expenses need approval
+      createdAt: businessDay,
     });
     await expense.save();
 
