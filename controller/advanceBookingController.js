@@ -3,6 +3,7 @@ const AdvanceBooking = require("../models/AdvanceBooking");
 const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
 const Manager = require("../models/Manager");
+const BusinessSettings = require("../models/BusinessSettings");
 const cloudinary = require("cloudinary").v2;
 const moment = require("moment-timezone");
 const { notifyAllAdmins } = require("./notificationController");
@@ -113,8 +114,20 @@ const addAdvanceBooking = async (req, res) => {
       });
     }
 
+    // Get Current Business Day for validation
+    let today = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        today = new Date(settings.currentBusinessDay);
+      }
+    } catch (err) {
+      console.error("Error fetching business day for booking validation:", err);
+    }
+    today.setHours(0, 0, 0, 0);
+
     const bookingDate = new Date(date);
-    if (bookingDate < new Date()) {
+    if (bookingDate < today) {
       return res.status(400).json({
         success: false,
         message: "Booking date cannot be in the past",
@@ -312,8 +325,20 @@ const updateBooking = async (req, res) => {
     delete updateData.clientId;
 
     if (updateData.date) {
+      // Get Current Business Day for validation
+      let today = new Date();
+      try {
+        const settings = await BusinessSettings.findOne();
+        if (settings && settings.currentBusinessDay) {
+          today = new Date(settings.currentBusinessDay);
+        }
+      } catch (err) {
+        console.error("Error fetching business day for booking update:", err);
+      }
+      today.setHours(0, 0, 0, 0);
+
       const bookingDate = new Date(updateData.date);
-      if (bookingDate < new Date()) {
+      if (bookingDate < today) {
         return res.status(400).json({
           success: false,
           message: "Booking date cannot be in the past",
