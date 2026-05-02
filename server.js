@@ -78,6 +78,7 @@ const adminClientRoutes = require("./routes/adminClientRoutes");
 const billRoutes = require("./routes/billRoutes");
 const gstRoutes = require("./routes/gstRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const businessSettingsRoutes = require("./routes/businessSettingsRoutes");
 const compareFacesRoute = require("./api/compareFaces");
 
 // Use Routes
@@ -99,6 +100,7 @@ app.use("/api/admin-clients", adminClientRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/gst", gstRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/settings", businessSettingsRoutes);
 app.use("/api/employees", compareFacesRoute);
 
 // Health check endpoint
