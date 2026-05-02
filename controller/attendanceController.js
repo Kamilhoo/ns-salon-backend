@@ -994,4 +994,31 @@ exports.adminAttendanceCustom = async (req, res) => {
   }
 };
 
+// Delete Attendance Record (Admin)
+exports.deleteAttendanceRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const attendance = await Attendance.findByIdAndDelete(id);
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "Attendance record not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Attendance record deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Attendance Record Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting attendance record",
+      error: error.message,
+    });
+  }
+};
+
 exports.handleFileUpload = handleFileUpload;
