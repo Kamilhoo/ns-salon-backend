@@ -2,6 +2,7 @@ require("dotenv").config();
 const Bill = require("../models/Bill");
 const Client = require("../models/Client");
 const GSTConfig = require("../models/GSTConfig");
+const BusinessSettings = require("../models/BusinessSettings");
 
 // Create new bill
 exports.createBill = async (req, res) => {
@@ -69,13 +70,27 @@ exports.createBill = async (req, res) => {
     const totalAmount = subtotal;
     const finalAmount = amountBeforeGST + gstAmount;
 
+    // Get Current Business Day
+    let businessDay = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        businessDay = new Date(settings.currentBusinessDay);
+        console.log("📅 [BillController] Using business day from database:", businessDay);
+      } else {
+        console.log("⚠️ [BillController] Business day settings not found, using system date");
+      }
+    } catch (err) {
+      console.error("❌ [BillController] Error fetching business day:", err);
+    }
+
     // Create bill with new schema
     const bill = new Bill({
       clientId,
       clientName,
       clientPhone: clientPhone || client.phoneNumber,
       services,
-      appointmentDate: appointmentDate ? new Date(appointmentDate) : new Date(),
+      appointmentDate: appointmentDate ? new Date(appointmentDate) : businessDay,
       startTime,
       specialist,
       totalDuration,
@@ -103,7 +118,7 @@ exports.createBill = async (req, res) => {
         // Create new visit with complete bill information
         const newVisit = {
           visitId,
-          date: new Date(),
+          date: businessDay,
           services: services,
           totalAmount: finalAmount,
           billNumber: bill.billNumber,
@@ -122,7 +137,7 @@ exports.createBill = async (req, res) => {
         client.visits.push(newVisit);
         client.totalVisits += 1;
         client.totalSpent += finalAmount;
-        client.lastVisit = new Date();
+        client.lastVisit = businessDay;
 
         await client.save();
       }
@@ -463,8 +478,16 @@ exports.getManagerBillingStats = async (req, res) => {
       },
     ]);
 
-    // Today's bills
-    const today = new Date();
+    // Today's bills (using Business Day)
+    let today = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        today = new Date(settings.currentBusinessDay);
+      }
+    } catch (err) {
+      console.error("Error fetching business day for stats:", err);
+    }
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -671,6 +694,18 @@ exports.createBillFromServices = async (req, res) => {
     const gstAmount = (amountBeforeGST * gstPercentage) / 100;
     const finalAmount = amountBeforeGST + gstAmount;
 
+    // Get Current Business Day
+    let businessDay = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        businessDay = new Date(settings.currentBusinessDay);
+        console.log("📅 [BillController] Using business day from database (ServicesFlow):", businessDay);
+      }
+    } catch (err) {
+      console.error("❌ [BillController] Error fetching business day (ServicesFlow):", err);
+    }
+
     // Check if client exists, if not create a new one
     let client = await Client.findOne({ phoneNumber: clientPhone });
     if (!client) {
@@ -698,7 +733,7 @@ exports.createBillFromServices = async (req, res) => {
       clientName,
       clientPhone,
       services: selectedServices,
-      appointmentDate: appointmentDate ? new Date(appointmentDate) : new Date(),
+      appointmentDate: appointmentDate ? new Date(appointmentDate) : businessDay,
       startTime,
       specialist,
       totalDuration,
@@ -721,7 +756,7 @@ exports.createBillFromServices = async (req, res) => {
       const visitId = `VISIT${Date.now()}`;
       const newVisit = {
         visitId,
-        date: new Date(),
+        date: businessDay,
         services: selectedServices,
         totalAmount: finalAmount,
         billNumber: bill.billNumber,
@@ -739,7 +774,7 @@ exports.createBillFromServices = async (req, res) => {
       client.visits.push(newVisit);
       client.totalVisits += 1;
       client.totalSpent += finalAmount;
-      client.lastVisit = new Date();
+      client.lastVisit = businessDay;
       await client.save();
     } catch (visitError) {
       console.error("Error updating client visit:", visitError);
