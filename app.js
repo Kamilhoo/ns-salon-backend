@@ -73,7 +73,7 @@ const managerAuthRoutes = require("./routes/managerAuthRoutes");
 const clientRoutes = require("./routes/clientRoutes");
 const adminClientRoutes = require("./routes/adminClientRoutes");
 const billRoutes = require("./routes/billRoutes");
-const businessSettingsRoutes = require("./routes/businessSettingsRoutes");
+const businessSettingRoutes = require("./routes/businessSettingRoutes");
 
 // Use Routes
 app.use("/api/services", serviceRoutes);
@@ -92,7 +92,7 @@ app.use("/api/manager", managerAuthRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/admin-clients", adminClientRoutes);
 app.use("/api/bills", billRoutes);
-app.use("/api/settings", businessSettingsRoutes);
+app.use("/api/settings", businessSettingRoutes);
 
 // Favicon handler (to prevent 404s)
 app.get("/favicon.ico", (req, res) => {
