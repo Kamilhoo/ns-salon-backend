@@ -10,6 +10,7 @@ const ManualAttendanceRequest = require("../models/ManualAttendanceRequest");
 const Notification = require("../models/Notification");
 const Admin = require("../models/Admin");
 const AdminAttendance = require("../models/AdminAttendance"); // Added for adminAttendanceCustom
+const BusinessSettings = require("../models/BusinessSettings");
 const { notifyAllAdmins } = require("./notificationController");
 
 // Use os.tmpdir() for temporary files (better for serverless)
@@ -177,41 +178,6 @@ async function verifyEmployeeFace(storedImageUrl, attendanceImagePath) {
   }
 }
 
-// Delete a single attendance record (employee/manager/admin)
-async function deleteAttendanceRecord(req, res) {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({ message: "Attendance ID is required" });
-    }
-
-    // Try deleting from primary Attendance collection first
-    const deletedAttendance = await Attendance.findByIdAndDelete(id);
-
-    // Also attempt to delete from AdminAttendance in case the ID belongs there
-    const deletedAdminAttendance = await AdminAttendance.findByIdAndDelete(id);
-
-    if (!deletedAttendance && !deletedAdminAttendance) {
-      return res.status(404).json({ message: "Attendance record not found" });
-    }
-
-    return res.json({
-      message: "Attendance record deleted successfully",
-      deletedFrom: {
-        attendance: !!deletedAttendance,
-        adminAttendance: !!deletedAdminAttendance,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Delete attendance error:", error);
-    return res.status(500).json({
-      message: "Failed to delete attendance record",
-      error: error.message,
-    });
-  }
-}
-
 // Employee Check-In
 exports.employeeCheckIn = async (req, res) => {
   try {
@@ -319,8 +285,16 @@ exports.employeeCheckIn = async (req, res) => {
       console.log("⚠️ Could not delete local file:", deleteError.message);
     }
 
-    // Check if attendance already exists for today
-    const today = new Date();
+    // Check if attendance already exists for today (using Business Day)
+    let today = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        today = new Date(settings.currentBusinessDay);
+      }
+    } catch (err) {
+      console.error("Error fetching business day for check-in:", err);
+    }
     today.setHours(0, 0, 0, 0);
 
     let attendance = await Attendance.findOne({
@@ -387,7 +361,7 @@ exports.employeeCheckIn = async (req, res) => {
 // Admin manual attendance recording for any employee/manager
 exports.adminRecordEmployeeAttendance = async (req, res) => {
   try {
-    const { employeeId, employeeName, type, date, time } = req.body;
+    const { employeeId, employeeName, type, date } = req.body;
 
     if (!employeeId || !employeeName || !type || !date) {
       return res.status(400).json({
@@ -408,50 +382,9 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Normalize date to start of the day for attendance record (build using local Y/M/D)
-    // Expecting date from frontend as "YYYY-MM-DD" (without timezone) so avoid new Date(string) UTC parsing
-    let attendanceDate;
-    try {
-      const [y, m, d] = String(date).split("-").map(Number);
-      if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
-        // Construct local date at midnight
-        attendanceDate = new Date(y, m - 1, d, 0, 0, 0, 0);
-      } else {
-        // Fallback to previous behavior if parsing fails
-        attendanceDate = new Date(date);
-        attendanceDate.setHours(0, 0, 0, 0);
-      }
-    } catch (e) {
-      attendanceDate = new Date(date);
-      attendanceDate.setHours(0, 0, 0, 0);
-    }
-
-    // Build a Date object that combines the selected date with the admin-selected time in local time
-    let selectedDateTime = null;
-    if (time) {
-      try {
-        // Frontend sends time as "HH:mm" (e.g. "16:00" for 4 PM)
-        const [hours, minutes] = time.split(":").map(Number);
-        if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
-          // Use the same Y/M/D as attendanceDate but with provided clock time
-          selectedDateTime = new Date(
-            attendanceDate.getFullYear(),
-            attendanceDate.getMonth(),
-            attendanceDate.getDate(),
-            hours,
-            minutes,
-            0,
-            0
-          );
-        }
-      } catch (e) {
-        console.warn(
-          "⚠️ Failed to parse admin-selected time, falling back to current time",
-          time,
-          e.message
-        );
-      }
-    }
+    // Normalize date to start of the day for attendance record
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
 
     let attendance = await Attendance.findOne({
       employeeId: employee._id,
@@ -492,12 +425,10 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
 
     // Apply check-in / check-out
     if (type === "checkin") {
-      // Use admin-selected time if provided, otherwise current time
-      attendance.checkInTime = selectedDateTime || new Date();
+      attendance.checkInTime = new Date();
       attendance.status = "present";
     } else if (type === "checkout") {
-      // Use admin-selected time if provided, otherwise current time
-      attendance.checkOutTime = selectedDateTime || new Date();
+      attendance.checkOutTime = new Date();
     }
 
     attendance.updatedAt = new Date();
@@ -513,8 +444,6 @@ exports.adminRecordEmployeeAttendance = async (req, res) => {
         checkOutTime: attendance.checkOutTime,
         status: attendance.status,
         date: attendance.date,
-        // Echo back the exact admin-selected clock time string for UI display
-        time: time || null,
       },
     });
   } catch (err) {
@@ -597,8 +526,16 @@ exports.employeeCheckOut = async (req, res) => {
       console.log("⚠️ Could not delete local file:", deleteError.message);
     }
 
-    // Find today's attendance
-    const today = new Date();
+    // Find today's attendance (using Business Day)
+    let today = new Date();
+    try {
+      const settings = await BusinessSettings.findOne();
+      if (settings && settings.currentBusinessDay) {
+        today = new Date(settings.currentBusinessDay);
+      }
+    } catch (err) {
+      console.error("Error fetching business day for check-out:", err);
+    }
     today.setHours(0, 0, 0, 0);
 
     const attendance = await Attendance.findOne({
@@ -1058,5 +995,3 @@ exports.adminAttendanceCustom = async (req, res) => {
 };
 
 exports.handleFileUpload = handleFileUpload;
-exports.deleteAttendanceRecord = deleteAttendanceRecord;
-//completed it now 
